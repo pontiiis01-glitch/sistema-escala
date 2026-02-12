@@ -29,7 +29,7 @@
             overflow-x: hidden;
         }
 
-        /* --- Header Premium --- */
+        /* --- Header Premium Centralizado --- */
         .navbar-custom {
             background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-color) 100%);
             padding: 1rem 0;
@@ -46,9 +46,6 @@
         }
         .brasao-img:hover { transform: scale(1.1); }
 
-        .brand-text h5 { letter-spacing: 1px; font-weight: 800; margin: 0; color: white; text-transform: uppercase; font-size: 1rem; }
-        .brand-text small { color: rgba(255,255,255,0.8); font-size: 0.75rem; letter-spacing: 0.5px; }
-
         /* --- Cards e Glassmorphism --- */
         .glass-card {
             background: var(--glass-bg);
@@ -60,10 +57,7 @@
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
-        }
+        .glass-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
 
         /* --- Inputs e Botões --- */
         .form-control, .form-select {
@@ -74,7 +68,6 @@
             font-size: 0.95rem;
             transition: all 0.3s ease;
         }
-        
         .form-control:focus, .form-select:focus {
             background-color: #fff;
             border-color: var(--primary-color);
@@ -125,35 +118,27 @@
         /* --- Animações --- */
         .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
-        
         .delay-1 { animation-delay: 0.1s; }
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
 
         /* --- Modal --- */
-        #preview-modal {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(5px);
-        }
-        .preview-content {
-            border-radius: 20px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
+        #preview-modal { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); }
+        .preview-content { border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
 
     <nav class="navbar-custom">
         <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <img src="brasao.png" class="brasao-img" onerror="this.style.opacity='0'">
-                <div class="brand-text lh-1">
-                    <h5>Comando Operacional</h5>
-                    <small>Corpo de Bombeiros Militar do Maranhão</small>
-                </div>
+            <img src="brasao.png" class="brasao-img" alt="CBMMA" onerror="this.style.opacity='0'">
+            
+            <div class="brand-text text-center flex-grow-1 px-2">
+                <h5 class="m-0 text-white fw-bold text-uppercase" style="letter-spacing: 1px;">Comando Operacional</h5>
+                <small class="text-white-50 d-block" style="font-size: 0.75rem; letter-spacing: 0.5px;">Corpo de Bombeiros Militar do Maranhão</small>
             </div>
-            <img src="brasao_unidade.png" class="brasao-img" onerror="this.style.opacity='0'">
+            
+            <img src="brasao_unidade.png" class="brasao-img" alt="Unidade" onerror="this.style.opacity='0'">
         </div>
     </nav>
 
