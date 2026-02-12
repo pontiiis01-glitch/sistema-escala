@@ -5,7 +5,10 @@ import { saveAs } from "https://cdn.skypack.dev/file-saver";
 let usuarioAtual = null;
 let perfilAtual = null;
 let escalaSelecionadaId = null;
-let eventoPreviewAtual = null; // Guarda qual evento estamos visualizando na prévia
+let eventoPreviewAtual = null;
+
+// Lista temporária para o "Carrinho de Pedidos"
+let listaOrdensTemporaria = [];
 
 // ================= AUTH =================
 export async function fazerLogin() {
@@ -44,6 +47,7 @@ onAuthStateChanged(auth, async (user) => {
             
             if (perfilAtual.funcao === 'admin') {
                 document.getElementById('admin-area').style.display = 'block';
+                carregarListaUnidades(); // NOVO: Carrega o select
                 carregarEventosAdmin();
             } else {
                 document.getElementById('unidade-area').style.display = 'block';
@@ -53,30 +57,98 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ================= ADMIN: DISPARO EM MASSA =================
+// ================= ADMIN: PREPARAÇÃO DE ORDENS =================
+
+// 1. Busca todas as unidades cadastradas no sistema para o Select
+async function carregarListaUnidades() {
+    const select = document.getElementById('select-unidade');
+    select.innerHTML = "<option value=''>Carregando...</option>";
+    
+    // Busca usuários que são escalantes (unidades)
+    const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
+    const snapshot = await getDocs(q);
+    
+    select.innerHTML = "<option value='' selected>Selecione uma Unidade...</option>";
+    
+    let unidades = [];
+    snapshot.forEach(doc => unidades.push(doc.data().unidade));
+    
+    // Ordena alfabeticamente
+    unidades.sort().forEach(u => {
+        select.innerHTML += `<option value="${u}">${u}</option>`;
+    });
+}
+
+// 2. Adiciona item na tabela temporária (carrinho)
+export function adicionarOrdem() {
+    const unidade = document.getElementById('select-unidade').value;
+    const funcao = document.getElementById('select-funcao').value;
+    const oficiais = document.getElementById('input-oficiais').value;
+    const pracas = document.getElementById('input-pracas').value;
+
+    if (!unidade) return alert("Selecione uma unidade!");
+    if (oficiais == 0 && pracas == 0) return alert("Defina a quantidade de militares.");
+
+    // Adiciona na lista
+    listaOrdensTemporaria.push({
+        id: Date.now(), // ID temporário
+        unidade, funcao, oficiais, pracas
+    });
+
+    atualizarTabelaOrdens();
+}
+
+// 3. Atualiza o visual da tabela direita
+function atualizarTabelaOrdens() {
+    const corpo = document.getElementById('tabela-ordens-body');
+    const contador = document.getElementById('contador-ordens');
+    
+    corpo.innerHTML = "";
+    contador.innerText = `${listaOrdensTemporaria.length} ordens`;
+
+    listaOrdensTemporaria.forEach((item, index) => {
+        corpo.innerHTML += `
+            <tr>
+                <td class="fw-bold">${item.unidade}</td>
+                <td><small>${item.funcao}</small></td>
+                <td>${item.oficiais} Of / ${item.pracas} Pç</td>
+                <td class="text-end">
+                    <button onclick="window.app.removerOrdem(${index})" class="btn btn-sm btn-link text-danger p-0">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+export function removerOrdem(index) {
+    listaOrdensTemporaria.splice(index, 1);
+    atualizarTabelaOrdens();
+}
+
+export function limparOrdens() {
+    listaOrdensTemporaria = [];
+    atualizarTabelaOrdens();
+}
+
+// ================= ADMIN: DISPARO REAL =================
 export async function dispararSolicitacao() {
     const evento = document.getElementById('nome-evento').value.trim();
     const data = document.getElementById('data-evento').value;
-    const funcao = document.getElementById('funcao-evento').value;
-    const qtdOficiais = document.getElementById('qtd-oficiais').value;
-    const qtdPracas = document.getElementById('qtd-pracas').value;
-    const textoUnidades = document.getElementById('lista-unidades-alvo').value;
 
-    if (!evento || !data || !textoUnidades) return alert("Preencha nome, data e unidades.");
-
-    // Transforma "1GBM, 2GBM, BEM" em ["1GBM", "2GBM", "BEM"]
-    const listaUnidades = textoUnidades.split(',').map(u => u.trim()).filter(u => u !== "");
-
-    if (listaUnidades.length === 0) return alert("Nenhuma unidade válida identificada.");
+    if (!evento || !data) return alert("Preencha o Nome do Evento e a Data.");
+    if (listaOrdensTemporaria.length === 0) return alert("Adicione pelo menos uma ordem na lista.");
 
     try {
-        const promises = listaUnidades.map(unidade => {
+        // Cria um documento para cada linha da tabela
+        const promises = listaOrdensTemporaria.map(ordem => {
             return addDoc(collection(db, "escalas"), {
                 evento: evento,
                 data: data,
-                unidade: unidade.toUpperCase(),
-                funcao: funcao,
-                cota: { oficial: qtdOficiais, praca: qtdPracas },
+                unidade: ordem.unidade,
+                funcao: ordem.funcao,
+                cota: { oficial: ordem.oficiais, praca: ordem.pracas },
                 status: "Pendente",
                 militares: "",
                 criadoEm: new Date()
@@ -84,11 +156,11 @@ export async function dispararSolicitacao() {
         });
 
         await Promise.all(promises);
-        alert(`Sucesso! ${listaUnidades.length} solicitações enviadas.`);
+        alert(`Sucesso! ${listaOrdensTemporaria.length} ordens enviadas.`);
         
-        // Limpa form
+        // Limpa tudo
+        limparOrdens();
         document.getElementById('nome-evento').value = "";
-        document.getElementById('lista-unidades-alvo').value = "";
         carregarEventosAdmin();
 
     } catch (e) {
@@ -97,27 +169,20 @@ export async function dispararSolicitacao() {
     }
 }
 
-// ================= ADMIN: VISUALIZAÇÃO AGRUPADA =================
+// ================= ADMIN: VISUALIZAÇÃO E DOWNLOAD =================
 async function carregarEventosAdmin() {
     const lista = document.getElementById('lista-eventos-admin');
     lista.innerHTML = "<div class='text-center small'>Atualizando...</div>";
 
-    // Pega todas as escalas
     const q = query(collection(db, "escalas"), orderBy("data", "desc"));
     const snapshot = await getDocs(q);
     
-    // Agrupa por "Evento + Data" para não repetir na lista
-    // Chave do Mapa: "Carnaval|2026-02-12"
     const grupos = new Map();
 
     snapshot.forEach(doc => {
         const d = doc.data();
         const chave = `${d.evento}|${d.data}`;
-        
-        if (!grupos.has(chave)) {
-            grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
-        }
-        
+        if (!grupos.has(chave)) grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
         const g = grupos.get(chave);
         g.total++;
         if (d.status === "Preenchido") g.respondidos++;
@@ -126,122 +191,90 @@ async function carregarEventosAdmin() {
     lista.innerHTML = "";
     if (grupos.size === 0) lista.innerHTML = "<div class='text-muted small p-3'>Nada encontrado.</div>";
 
-    grupos.forEach((info, chave) => {
-        // Formata data para BR
+    grupos.forEach((info) => {
         const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
         const percentual = Math.round((info.respondidos / info.total) * 100);
         const corBarra = percentual === 100 ? "bg-success" : "bg-warning";
 
         lista.innerHTML += `
             <div class="list-group-item list-group-item-action cursor-pointer p-3 mb-2 border rounded" 
-                 onclick="window.abrirPreviewWrapper('${info.evento}', '${info.data}')" style="cursor: pointer;">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <strong class="text-dark">${info.evento}</strong>
+                 onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
+                <div class="d-flex justify-content-between">
+                    <strong>${info.evento}</strong>
                     <span class="badge bg-light text-dark border">${dataBr}</span>
                 </div>
-                <div class="d-flex justify-content-between small text-muted mb-1">
-                    <span>Respostas: ${info.respondidos}/${info.total}</span>
+                <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>${info.respondidos}/${info.total} Ordens Prontas</span>
                     <span>${percentual}%</span>
                 </div>
-                <div class="progress" style="height: 6px;">
+                <div class="progress mt-1" style="height: 4px;">
                     <div class="progress-bar ${corBarra}" style="width: ${percentual}%"></div>
                 </div>
             </div>`;
     });
 }
 
-// ================= ADMIN: PRÉVIA E DOWNLOAD =================
 export async function abrirPreview(nomeEvento, dataEvento) {
-    eventoPreviewAtual = { nome: nomeEvento, data: dataEvento }; // Salva contexto
-    
+    eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
     document.getElementById('preview-modal').style.display = 'flex';
     document.getElementById('preview-titulo').innerText = nomeEvento;
     document.getElementById('preview-data').innerText = new Date(dataEvento).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
     
-    const corpoTabela = document.getElementById('tabela-preview-corpo');
-    corpoTabela.innerHTML = "<tr><td colspan='3' class='text-center'>Carregando detalhes...</td></tr>";
+    const corpo = document.getElementById('tabela-preview-corpo');
+    corpo.innerHTML = "<tr><td colspan='4' class='text-center'>Carregando...</td></tr>";
 
-    // Busca apenas as escalas daquele evento/dia específico
-    const q = query(
-        collection(db, "escalas"), 
-        where("evento", "==", nomeEvento),
-        where("data", "==", dataEvento)
-    );
-    
+    const q = query(collection(db, "escalas"), where("evento", "==", nomeEvento), where("data", "==", dataEvento));
     const snapshot = await getDocs(q);
+    
     let html = "";
-    let totalEfetivo = 0;
-
     snapshot.forEach(docSnap => {
         const d = docSnap.data();
         const statusClass = d.status === "Preenchido" ? "bg-ok" : "bg-pendente";
-        
-        // Conta linhas não vazias para estimar efetivo
         const linhas = d.militares ? d.militares.split('\n').filter(l => l.trim().length > 3).length : 0;
-        totalEfetivo += linhas;
-
-        html += `
-            <tr>
-                <td class="fw-bold">${d.unidade}</td>
-                <td><span class="badge-status ${statusClass}">${d.status}</span></td>
-                <td>${linhas} militares</td>
-            </tr>
-        `;
+        
+        html += `<tr>
+            <td class="fw-bold">${d.unidade}</td>
+            <td><small>${d.funcao}</small></td>
+            <td><span class="badge-status ${statusClass}">${d.status}</span></td>
+            <td>${linhas} mil.</td>
+        </tr>`;
     });
-
-    corpoTabela.innerHTML = html;
-    document.getElementById('preview-total').innerText = totalEfetivo;
+    corpo.innerHTML = html;
 }
 
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
-
     try {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Escala');
         
-        // Setup Colunas
         worksheet.columns = [
-            { key: 'ord', width: 6 },
-            { key: 'posto', width: 12 },
-            { key: 'nome', width: 40 },
-            { key: 'contato', width: 18 },
-            { key: 'unidade', width: 15 },
-            { key: 'funcao', width: 20 }
+            { key: 'ord', width: 6 }, { key: 'posto', width: 12 }, { key: 'nome', width: 40 },
+            { key: 'contato', width: 18 }, { key: 'unidade', width: 15 }, { key: 'funcao', width: 20 }
         ];
 
-        // Estilo Cabeçalho
         const header = worksheet.addRow(['Ord', 'POSTO', 'NOME COMPLETO', 'CONTATO', 'UNIDADE', 'FUNÇÃO']);
         header.eachCell(cell => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } };
             cell.font = { bold: true };
-            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
             cell.alignment = { horizontal: 'center' };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         });
 
-        // Busca dados NOVAMENTE para garantir frescor
-        const q = query(
-            collection(db, "escalas"), 
-            where("evento", "==", eventoPreviewAtual.nome),
-            where("data", "==", eventoPreviewAtual.data),
-            where("status", "==", "Preenchido") // Só baixa quem mandou
-        );
-        
+        const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
         let contador = 1;
 
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
             const linhas = d.militares.split('\n');
-
             linhas.forEach(linha => {
                 if (linha.trim().length > 3) {
                     const partes = linha.split('-');
                     let posto = "SD BM";
                     let nome = partes[0] ? partes[0].trim() : "";
                     let contato = partes[1] ? partes[1].trim() : "";
-
-                    // Detecção simples de posto
+                    
                     const espaco = nome.indexOf(' ');
                     if (espaco > 0 && espaco < 7) {
                         posto = nome.substring(0, espaco).toUpperCase();
@@ -249,99 +282,69 @@ export async function baixarExcelDoEvento() {
                     }
 
                     const row = worksheet.addRow({
-                        ord: contador++,
-                        posto: posto,
-                        nome: nome,
-                        contato: contato,
-                        unidade: d.unidade,
-                        funcao: d.funcao.toUpperCase()
+                        ord: contador++, posto, nome, contato, unidade: d.unidade, funcao: d.funcao.toUpperCase()
                     });
                     
-                    // Estiliza linha
                     row.eachCell((cell, colNum) => {
                         cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                         cell.alignment = { horizontal: 'center' };
-                        if(colNum === 3) cell.alignment = { horizontal: 'left', indent: 1 }; // Nome esquerda
-                        if(colNum === 6) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } }; // Azul Função
+                        if(colNum === 3) cell.alignment = { horizontal: 'left', indent: 1 };
+                        if(colNum === 6) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } };
                     });
                 }
             });
         });
-
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `${eventoPreviewAtual.nome}_${eventoPreviewAtual.data}.xlsx`);
-
-    } catch (e) {
-        alert("Erro ao gerar Excel: " + e.message);
-    }
+        saveAs(new Blob([buffer]), `${eventoPreviewAtual.nome}.xlsx`);
+    } catch (e) { alert("Erro: " + e.message); }
 }
 
-// ================= UNIDADE: RESPOSTA =================
+// ================= UNIDADE (Mantido igual) =================
 async function carregarPendenciasUnidade() {
     const lista = document.getElementById('lista-unidade');
     lista.innerHTML = "Carregando...";
+    const q = query(collection(db, "escalas"), where("unidade", "==", perfilAtual.unidade), orderBy("data", "asc"));
     
-    // Ordena pela data mais próxima
-    const q = query(
-        collection(db, "escalas"), 
-        where("unidade", "==", perfilAtual.unidade),
-        orderBy("data", "asc")
-    );
-
     try {
         const snapshot = await getDocs(q);
         lista.innerHTML = "";
-        
         if (snapshot.empty) return lista.innerHTML = "<div class='text-muted'>Nada pendente.</div>";
 
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
             const dataFmt = new Date(d.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
             const statusColor = d.status === "Pendente" ? "border-danger" : "border-success";
-            const icon = d.status === "Pendente" ? "bi-exclamation-circle" : "bi-check-circle";
-
+            
             lista.innerHTML += `
                 <div class="col-md-6">
                     <div class="card p-3 h-100 ${statusColor} border-start border-4">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="badge bg-secondary">${dataFmt}</span>
-                            <span class="fw-bold small ${d.status === 'Pendente' ? 'text-danger' : 'text-success'}">
-                                <i class="bi ${icon}"></i> ${d.status}
-                            </span>
+                            <span class="badge ${d.status === 'Pendente' ? 'bg-danger' : 'bg-success'}">${d.status}</span>
                         </div>
                         <h6 class="fw-bold mb-1">${d.evento}</h6>
-                        <div class="small text-muted mb-3">
-                            Meta: ${d.cota.oficial} Oficiais | ${d.cota.praca} Praças
-                            <br>Função: ${d.funcao}
+                        <div class="small text-muted mb-2">Função: <strong>${d.funcao}</strong></div>
+                        <div class="small bg-light p-2 rounded mb-3 border">
+                            Meta: <strong>${d.cota.oficial}</strong> Oficiais | <strong>${d.cota.praca}</strong> Praças
                         </div>
                         <button onclick="window.app.abrirEdicao('${docSnap.id}', '${d.evento}', '${d.cota.oficial}', '${d.cota.praca}', '${d.funcao}')" 
                                 class="btn btn-sm btn-outline-primary w-100">
-                            ${d.status === 'Pendente' ? 'Preencher Escala' : 'Editar Enviado'}
+                            ${d.status === 'Pendente' ? 'Preencher Escala' : 'Editar'}
                         </button>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
-    } catch(e) {
-        console.error(e); // Geralmente erro de índice composto
-        if(e.message.includes("index")) alert("Atenção Admin: É necessário criar um índice no Firestore. Abra o console (F12) para ver o link.");
-    }
+    } catch(e) { console.error(e); }
 }
 
 export async function abrirEdicao(id, evento, of, pra, func) {
     escalaSelecionadaId = id;
-    
-    // Busca o texto atual do documento para preencher o textarea
-    const docRef = doc(db, "escalas", id);
-    const docSnap = await getDoc(docRef);
-    const textoAtual = docSnap.data().militares || "";
-
+    const docSnap = await getDoc(doc(db, "escalas", id));
     document.getElementById('titulo-evento-form').innerText = evento;
     document.getElementById('meta-oficiais').innerText = of;
     document.getElementById('meta-pracas').innerText = pra;
     document.getElementById('meta-funcao').innerText = func;
-    document.getElementById('lista-nomes').value = textoAtual;
-    
+    document.getElementById('lista-nomes').value = docSnap.data().militares || "";
     document.getElementById('form-militar').style.display = 'block';
     document.getElementById('form-militar').scrollIntoView({ behavior: 'smooth' });
 }
@@ -349,17 +352,24 @@ export async function abrirEdicao(id, evento, of, pra, func) {
 export async function salvarEscala() {
     if (!escalaSelecionadaId) return;
     const texto = document.getElementById('lista-nomes').value;
-    
     try {
-        await updateDoc(doc(db, "escalas", escalaSelecionadaId), {
-            militares: texto,
-            status: "Preenchido"
-        });
-        alert("Enviado com sucesso!");
+        await updateDoc(doc(db, "escalas", escalaSelecionadaId), { militares: texto, status: "Preenchido" });
+        alert("Enviado!");
         document.getElementById('form-militar').style.display = 'none';
         carregarPendenciasUnidade();
     } catch (e) { alert("Erro: " + e.message); }
 }
 
-// Exportação global
-window.app = { fazerLogin, fazerCadastro, sair, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento };
+export function removerOrdem(i) { listaOrdensTemporaria.splice(i, 1); atualizarTabelaOrdens(); }
+export function limparOrdens() { listaOrdensTemporaria = []; atualizarTabelaOrdens(); }
+function atualizarTabelaOrdens() {
+    const corpo = document.getElementById('tabela-ordens-body');
+    const contador = document.getElementById('contador-ordens');
+    corpo.innerHTML = "";
+    contador.innerText = `${listaOrdensTemporaria.length} ordens`;
+    listaOrdensTemporaria.forEach((item, index) => {
+        corpo.innerHTML += `<tr><td class="fw-bold">${item.unidade}</td><td><small>${item.funcao}</small></td><td>${item.oficiais} Of / ${item.pracas} Pç</td><td class="text-end"><button onclick="window.app.removerOrdem(${index})" class="btn btn-sm text-danger"><i class="bi bi-trash"></i></button></td></tr>`;
+    });
+}
+
+window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, removerOrdem, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento };

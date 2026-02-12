@@ -3,219 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Escalas Operacionais - CBMMA</title>
+    <title>Sistema de Escalas - CBMMA</title>
     <link rel="icon" type="image/png" href="brasao_unidade.png">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --cbm-red: #bf0000; --cbm-dark: #8a0000; --bg-color: #f4f6f9; }
-        body { background-color: var(--bg-color); font-family: 'Poppins', sans-serif; color: #333; overflow-x: hidden; }
-        .header-cbm { background: linear-gradient(135deg, var(--cbm-red) 0%, var(--cbm-dark) 100%); color: white; padding: 15px 20px; box-shadow: 0 4px 20px rgba(191, 0, 0, 0.3); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
-        .brasao-img { height: 60px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
-        .card { border: none; border-radius: 16px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: transform 0.3s ease; }
-        .form-control, .form-select { border-radius: 8px; padding: 10px; border: 1px solid #e0e0e0; background-color: #f9f9f9; }
-        .form-control:focus { border-color: var(--cbm-red); box-shadow: 0 0 0 3px rgba(191, 0, 0, 0.1); background-color: white; }
-        .btn-danger { background: linear-gradient(45deg, var(--cbm-red), #d90404); border: none; border-radius: 8px; }
-        .badge-status { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-        .bg-pendente { background-color: #ffe5e5; color: #dc3545; }
-        .bg-ok { background-color: #e5f9ed; color: #198754; }
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        :root {
+            --primary-color: #ce0000;
+            --primary-dark: #8a0000;
+            --accent-color: #ff3b3b;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.1);
+            --shadow-hover: 0 20px 50px -10px rgba(206, 0, 0, 0.15);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Inter', sans-serif;
+            color: #2c3e50;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- Header Premium --- */
+        .navbar-custom {
+            background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(138, 0, 0, 0.25);
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 10;
+        }
         
-        /* Modal de Prévia */
-        #preview-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
-        .preview-content { background: white; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 15px; padding: 25px; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .brasao-img {
+            height: 55px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+        .brasao-img:hover { transform: scale(1.1); }
+
+        .brand-text h5 { letter-spacing: 1px; font-weight: 800; margin: 0; color: white; text-transform: uppercase; font-size: 1rem; }
+        .brand-text small { color: rgba(255,255,255,0.8); font-size: 0.75rem; letter-spacing: 0.5px; }
+
+        /* --- Cards e Glassmorphism --- */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--shadow-soft);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* --- Inputs e Botões --- */
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px 15px;
+            border: 1px solid #e1e5ea;
+            background-color: #f8f9fa;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(206, 0, 0, 0.1);
+        }
+
+        .btn-custom {
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            border: none;
+        }
+
+        .btn-primary-cbm {
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(206, 0, 0, 0.3);
+        }
+        .btn-primary-cbm:hover {
+            background: linear-gradient(45deg, var(--primary-dark), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(206, 0, 0, 0.4);
+            color: white;
+        }
+
+        /* --- Tabela de Ordens --- */
+        .order-list-container {
+            background: #fff;
+            border-radius: 15px;
+            border: 1px solid #eee;
+            overflow: hidden;
+        }
+        .table-custom th {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #eee;
+        }
+        .table-custom td { vertical-align: middle; }
+
+        /* --- Animações --- */
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* --- Modal --- */
+        #preview-modal {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+        .preview-content {
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
     </style>
 </head>
 <body>
 
-    <div class="header-cbm mb-4">
-        <div class="d-flex justify-content-between align-items-center container">
-            <img src="brasao.png" class="brasao-img" onerror="this.style.display='none'">
-            <div class="text-center text-white mx-2">
-                <h5 class="fw-bold m-0">COMANDO OPERACIONAL</h5>
-                <small style="opacity: 0.8;">Sistema de Escalas Integrado</small>
+    <nav class="navbar-custom">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <img src="brasao.png" class="brasao-img" onerror="this.style.opacity='0'">
+                <div class="brand-text lh-1">
+                    <h5>Comando Operacional</h5>
+                    <small>Corpo de Bombeiros Militar do Maranhão</small>
+                </div>
             </div>
-            <img src="brasao_unidade.png" class="brasao-img" onerror="this.style.display='none'">
+            <img src="brasao_unidade.png" class="brasao-img" onerror="this.style.opacity='0'">
         </div>
-    </div>
+    </nav>
 
     <div class="container pb-5">
         
-        <div id="auth-container" class="card p-4 mx-auto fade-in" style="max-width: 400px;">
+        <div id="auth-container" class="glass-card p-5 mx-auto fade-in" style="max-width: 450px;">
             <div class="text-center mb-4">
-                <h5 class="fw-bold text-danger">Acesso Restrito</h5>
+                <h4 class="fw-bold text-dark">Acesso ao Sistema</h4>
+                <p class="text-muted small">Identifique-se para acessar as escalas</p>
             </div>
+            
             <div id="login-form">
-                <input type="email" id="email-login" class="form-control mb-3" placeholder="Email Institucional">
-                <input type="password" id="senha-login" class="form-control mb-4" placeholder="Senha">
-                <button onclick="fazerLogin()" class="btn btn-danger w-100 py-2">ENTRAR</button>
-                <div class="text-center mt-3">
-                    <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small text-muted">Cadastrar Unidade</a>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-bold">EMAIL</label>
+                    <input type="email" id="email-login" class="form-control" placeholder="ex: 1bbm@cbm.ma.gov.br">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small text-muted fw-bold">SENHA</label>
+                    <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
+                </div>
+                <button onclick="fazerLogin()" class="btn btn-custom btn-primary-cbm w-100 mb-3">Entrar no Sistema</button>
+                <div class="text-center">
+                    <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small text-secondary fw-bold">Cadastrar Nova Unidade</a>
                 </div>
             </div>
+
             <div id="cadastro-form" style="display: none;">
-                <input type="text" id="unidade-cadastro" class="form-control mb-3" placeholder="Nome da Unidade (Ex: 1º BBM)">
-                <input type="email" id="email-cadastro" class="form-control mb-3" placeholder="Email">
-                <input type="password" id="senha-cadastro" class="form-control mb-4" placeholder="Criar Senha">
-                <button onclick="fazerCadastro()" class="btn btn-primary w-100 py-2">CADASTRAR</button>
-                <div class="text-center mt-3">
-                    <a href="#" onclick="alternarTela('login')" class="text-decoration-none small text-muted">Voltar</a>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-bold">NOME DA UNIDADE (BBM/CIA)</label>
+                    <input type="text" id="unidade-cadastro" class="form-control" placeholder="Ex: 1º BBM, 2ª CIA">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted fw-bold">EMAIL OFICIAL</label>
+                    <input type="email" id="email-cadastro" class="form-control" placeholder="email@cbm.ma.gov.br">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small text-muted fw-bold">CRIAR SENHA</label>
+                    <input type="password" id="senha-cadastro" class="form-control">
+                </div>
+                <button onclick="fazerCadastro()" class="btn btn-custom btn-primary-cbm w-100 mb-3">Finalizar Cadastro</button>
+                <div class="text-center">
+                    <a href="#" onclick="alternarTela('login')" class="text-decoration-none small text-secondary">← Voltar para Login</a>
                 </div>
             </div>
-            <p id="msg-erro" class="text-danger text-center mt-2 small"></p>
+            <p id="msg-erro" class="text-danger text-center mt-3 small fw-bold mb-0"></p>
         </div>
 
-        <div id="dashboard-screen" style="display: none;" class="fade-in">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold" id="titulo-unidade">...</h4>
-                <button onclick="sair()" class="btn btn-outline-dark btn-sm">Sair</button>
+        <div id="dashboard-screen" style="display: none;">
+            
+            <div class="d-flex justify-content-between align-items-center mb-5 fade-in">
+                <div>
+                    <h6 class="text-muted small text-uppercase fw-bold m-0">Bem-vindo,</h6>
+                    <h2 id="titulo-unidade" class="fw-bold text-dark m-0" style="letter-spacing: -1px;">...</h2>
+                </div>
+                <button onclick="sair()" class="btn btn-sm btn-outline-secondary px-3 rounded-pill">
+                    <i class="bi bi-box-arrow-right"></i> Sair
+                </button>
             </div>
 
             <div id="admin-area" style="display: none;">
+                
+                <div class="glass-card p-4 mb-4 fade-in delay-1 border-start border-5 border-danger">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-flag-fill text-danger fs-5"></i>
+                        <h6 class="text-danger fw-bold m-0">DADOS DA OPERAÇÃO</h6>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <input type="text" id="nome-evento" placeholder="Nome do Evento (Ex: Operação Semana Santa)" class="form-control form-control-lg">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="date" id="data-evento" class="form-control form-control-lg">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-4">
-                    <div class="col-md-5">
-                        <div class="card p-4 h-100 border-start border-5 border-danger">
-                            <h6 class="text-danger fw-bold mb-3"><i class="bi bi-megaphone-fill"></i> NOVA MISSÃO</h6>
+                    <div class="col-lg-5">
+                        <div class="glass-card p-4 h-100 fade-in delay-2">
+                            <h6 class="fw-bold mb-4 text-dark"><i class="bi bi-sliders"></i> Configurar Efetivo</h6>
                             
                             <div class="mb-3">
-                                <label class="small fw-bold text-muted">NOME DO EVENTO</label>
-                                <input type="text" id="nome-evento" placeholder="Ex: Carnaval - Dia 01" class="form-control">
+                                <label class="small fw-bold text-muted mb-1">UNIDADE SOLICITADA</label>
+                                <select id="select-unidade" class="form-select">
+                                    <option value="" selected>Carregando...</option>
+                                </select>
                             </div>
 
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <label class="small fw-bold text-muted">DATA</label>
-                                    <input type="date" id="data-evento" class="form-control">
-                                </div>
-                                <div class="col-6">
-                                    <label class="small fw-bold text-muted">FUNÇÃO</label>
-                                    <select id="funcao-evento" class="form-select">
-                                        <option value="Socorrista">Socorrista</option>
-                                        <option value="Motorista">Motorista</option>
-                                        <option value="Combate">Combate</option>
-                                        <option value="Vistoriante">Vistoriante</option>
-                                        <option value="Comando">Comando</option>
-                                    </select>
-                                </div>
+                            <div class="mb-3">
+                                <label class="small fw-bold text-muted mb-1">FUNÇÃO</label>
+                                <select id="select-funcao" class="form-select">
+                                    <option value="Socorrista">Socorrista</option>
+                                    <option value="Motorista">Motorista</option>
+                                    <option value="Combate">Combate a Incêndio</option>
+                                    <option value="Vistoriante">Vistoriante</option>
+                                    <option value="Comando">Oficial de Comando</option>
+                                    <option value="Logística">Logística</option>
+                                </select>
                             </div>
 
-                            <div class="row g-2 mb-3">
+                            <div class="row g-2 mb-4">
                                 <div class="col-6">
-                                    <label class="small fw-bold text-muted">QTD OFICIAIS</label>
-                                    <input type="number" id="qtd-oficiais" class="form-control" value="0" min="0">
+                                    <label class="small fw-bold text-muted mb-1">OFICIAIS</label>
+                                    <input type="number" id="input-oficiais" class="form-control text-center fw-bold" value="0" min="0">
                                 </div>
                                 <div class="col-6">
-                                    <label class="small fw-bold text-muted">QTD PRAÇAS</label>
-                                    <input type="number" id="qtd-pracas" class="form-control" value="0" min="0">
+                                    <label class="small fw-bold text-muted mb-1">PRAÇAS</label>
+                                    <input type="number" id="input-pracas" class="form-control text-center fw-bold" value="0" min="0">
                                 </div>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="small fw-bold text-muted">UNIDADES ALVO (Separe por vírgula)</label>
-                                <textarea id="lista-unidades-alvo" class="form-control" rows="2" placeholder="Ex: 1º BBM, 2º BBM, BBEM, BBS"></textarea>
-                                <small class="text-muted" style="font-size: 0.75em;">O sistema criará uma solicitação para cada sigla digitada.</small>
-                            </div>
-
-                            <button onclick="dispararSolicitacao()" class="btn btn-danger w-100 py-2 fw-bold">
-                                <i class="bi bi-send"></i> ENVIAR ORDEM
+                            <button onclick="adicionarOrdem()" class="btn btn-outline-danger w-100 fw-bold py-3 rounded-3 dashed-border">
+                                <i class="bi bi-plus-lg"></i> ADICIONAR AO PEDIDO
                             </button>
                         </div>
                     </div>
 
-                    <div class="col-md-7">
-                        <div class="card p-4 h-100">
-                            <h6 class="fw-bold mb-3 border-bottom pb-2">HISTÓRICO DE EVENTOS (POR DIA)</h6>
-                            <div id="lista-eventos-admin" class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-                                <div class="text-center text-muted py-3">Carregando...</div>
+                    <div class="col-lg-7">
+                        <div class="glass-card p-4 h-100 fade-in delay-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold m-0"><i class="bi bi-list-check"></i> Ordens Preparadas</h6>
+                                <span class="badge bg-light text-dark border" id="contador-ordens">0 itens</span>
+                            </div>
+                            
+                            <div class="order-list-container mb-3">
+                                <div class="table-responsive" style="max-height: 300px;">
+                                    <table class="table table-custom table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="ps-3">Unidade</th>
+                                                <th>Função</th>
+                                                <th>Efetivo</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabela-ordens-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button onclick="limparOrdens()" class="btn btn-light text-muted w-auto" style="min-width: 100px;">Limpar</button>
+                                <button onclick="dispararSolicitacao()" class="btn btn-custom btn-primary-cbm w-100">
+                                    <i class="bi bi-send-fill me-2"></i> ENVIAR SOLICITAÇÕES
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <div class="glass-card p-4 mt-4 fade-in delay-3">
+                     <h6 class="fw-bold mb-3 text-secondary">HISTÓRICO DE MISSÕES</h6>
+                     <div id="lista-eventos-admin" class="list-group list-group-flush rounded-3"></div>
+                </div>
             </div>
 
             <div id="unidade-area" style="display: none;">
-                <div class="alert alert-warning border-start border-5 border-warning shadow-sm">
-                    <strong>Atenção Escalante:</strong> Respeite rigorosamente as cotas de Oficiais e Praças solicitadas.
+                <div class="alert alert-warning d-flex align-items-center shadow-sm rounded-3 fade-in">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                    <div>
+                        <strong>Atenção Escalante:</strong> Cumpra rigorosamente as cotas de Oficiais e Praças solicitadas pelo Comando.
+                    </div>
                 </div>
-                <h5 class="fw-bold mb-3">Minhas Pendências</h5>
-                <div id="lista-unidade" class="row g-3">
-                    </div>
                 
-                <div id="form-militar" style="display:none;" class="card p-4 mt-4 border-top border-5 border-primary shadow-lg">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h5 class="text-primary fw-bold" id="titulo-evento-form">...</h5>
-                        <button onclick="fecharEdicao()" class="btn-close"></button>
+                <h5 class="fw-bold mb-4 mt-5">Minhas Pendências</h5>
+                <div id="lista-unidade" class="row g-4 fade-in delay-1"></div>
+                
+                <div id="form-militar" style="display:none;" class="glass-card p-4 mt-5 border-top border-5 border-primary shadow-lg position-relative">
+                    <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-3"></button>
+                    
+                    <div class="mb-4">
+                        <h5 class="text-primary fw-bold mb-1" id="titulo-evento-form">...</h5>
+                        <small class="text-muted">Preencha os nomes conforme a cota abaixo</small>
                     </div>
-                    <div class="bg-light p-3 rounded mb-3 border">
-                        <div class="d-flex justify-content-between text-muted small fw-bold">
-                            <span>COTA OFICIAIS: <span id="meta-oficiais" class="text-dark">0</span></span>
-                            <span>COTA PRAÇAS: <span id="meta-pracas" class="text-dark">0</span></span>
-                            <span>FUNÇÃO: <span id="meta-funcao" class="text-dark">...</span></span>
+
+                    <div class="d-flex gap-3 mb-3">
+                        <div class="bg-light p-3 rounded-3 border flex-fill text-center">
+                            <small class="d-block text-muted fw-bold">OFICIAIS</small>
+                            <span id="meta-oficiais" class="fs-4 fw-bold text-dark">0</span>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border flex-fill text-center">
+                            <small class="d-block text-muted fw-bold">PRAÇAS</small>
+                            <span id="meta-pracas" class="fs-4 fw-bold text-dark">0</span>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border flex-fill text-center">
+                            <small class="d-block text-muted fw-bold">FUNÇÃO</small>
+                            <span id="meta-funcao" class="fw-bold text-primary">...</span>
                         </div>
                     </div>
-                    <textarea id="lista-nomes" class="form-control font-monospace mb-3" rows="8" placeholder="POSTO NOME DE GUERRA - TELEFONE"></textarea>
-                    <button onclick="salvarEscala()" class="btn btn-primary w-100">ENVIAR ESCALA</button>
+
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted mb-2">LISTA DE NOMES (Posto Nome - Telefone)</label>
+                        <textarea id="lista-nomes" class="form-control font-monospace" rows="8" placeholder="Ex:&#10;CB BBM SILVA - 98 98888-8888&#10;SD BBM SOUZA - 98 99999-9999"></textarea>
+                    </div>
+                    
+                    <button onclick="salvarEscala()" class="btn btn-custom btn-primary-cbm w-100">ENVIAR ESCALA PREENCHIDA</button>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <div id="preview-modal">
-        <div class="preview-content">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold m-0 text-danger" id="preview-titulo">Relatório Geral</h5>
+    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center">
+        <div class="preview-content bg-white p-4 w-100 fade-in" style="max-width: 800px;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="fw-bold m-0 text-danger" id="preview-titulo">...</h5>
+                    <small class="text-muted"><i class="bi bi-calendar-event me-1"></i> <span id="preview-data">...</span></small>
+                </div>
                 <button onclick="fecharPreview()" class="btn-close"></button>
             </div>
             
-            <div class="mb-3 d-flex gap-3 text-small text-muted border-bottom pb-2">
-                <span><i class="bi bi-calendar"></i> <span id="preview-data">...</span></span>
-                <span><i class="bi bi-people"></i> Total Previsto: <span id="preview-total">0</span></span>
-            </div>
-
-            <div class="table-responsive mb-4" style="max-height: 300px;">
-                <table class="table table-hover table-sm align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Unidade</th>
-                            <th>Status</th>
-                            <th>Efetivo Enviado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-preview-corpo">
-                        </tbody>
+            <div class="table-responsive mb-4 border rounded-3">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light"><tr><th class="ps-3">Unidade</th><th>Função</th><th>Status</th><th>Efetivo</th></tr></thead>
+                    <tbody id="tabela-preview-corpo"></tbody>
                 </table>
             </div>
-
-            <div class="d-grid">
-                <button onclick="baixarExcelDoEvento()" class="btn btn-success fw-bold">
-                    <i class="bi bi-file-earmark-excel"></i> BAIXAR EXCEL DESTE DIA
-                </button>
-            </div>
+            
+            <button onclick="baixarExcelDoEvento()" class="btn btn-success fw-bold w-100 py-3 rounded-3">
+                <i class="bi bi-file-earmark-excel me-2"></i> BAIXAR EXCEL (.XLSX)
+            </button>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
     <script>
-        // Glue Code
-        window.alternarTela = (tela) => {
-            document.getElementById('login-form').style.display = tela === 'login' ? 'block' : 'none';
-            document.getElementById('cadastro-form').style.display = tela === 'cadastro' ? 'block' : 'none';
+        window.alternarTela = (t) => {
+            const login = document.getElementById('login-form');
+            const cadastro = document.getElementById('cadastro-form');
+            if (t === 'login') { login.style.display = 'block'; cadastro.style.display = 'none'; } 
+            else { login.style.display = 'none'; cadastro.style.display = 'block'; }
             document.getElementById('msg-erro').innerText = "";
         };
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
-        window.fecharPreview = () => document.getElementById('preview-modal').style.display = 'none';
+        window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
 
-        // Mapeando funções do módulo
-        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
-        funcoes.forEach(f => window[f] = () => window.app[f] && window.app[f]());
-        
-        // Wrapper especial para passar argumentos nos botões dinâmicos
-        window.abrirPreviewWrapper = (nome, data) => window.app.abrirPreview(nome, data);
+        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'removerOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
+        funcoes.forEach(f => window[f] = (...args) => window.app[f] && window.app[f](...args));
     </script>
 </body>
 </html>
