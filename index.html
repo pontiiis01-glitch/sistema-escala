@@ -363,7 +363,7 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+   <script type="module" src="app.js"></script>
     <script>
         window.alternarTela = (t) => {
             const login = document.getElementById('login-form');
@@ -375,7 +375,7 @@
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
 
-        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'removerOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
+        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'excluirOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
         funcoes.forEach(f => window[f] = (...args) => window.app[f] && window.app[f](...args));
     </script>
 </body>

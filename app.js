@@ -103,7 +103,7 @@ function atualizarTabelaOrdens() {
                 <td><span class="badge bg-light text-secondary border">${item.funcao}</span></td>
                 <td class="small fw-bold">${item.oficiais} Of / ${item.pracas} Pç</td>
                 <td class="text-end pe-3">
-                    <button onclick="window.app.removerOrdem(${index})" class="btn btn-sm text-danger hover-scale">
+                    <button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger hover-scale">
                         <i class="bi bi-x-circle-fill"></i>
                     </button>
                 </td>
@@ -112,7 +112,7 @@ function atualizarTabelaOrdens() {
     });
 }
 
-export function removerOrdem(index) {
+export function excluirOrdem(index) {
     listaOrdensTemporaria.splice(index, 1);
     atualizarTabelaOrdens();
 }
@@ -360,4 +360,4 @@ export async function salvarEscala() {
     } catch (e) { alert("Erro: " + e.message); }
 }
 
-window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, removerOrdem, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento };
+window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento };
