@@ -1,5 +1,4 @@
 // Importações via CDN (Versão 10.7.1)
-// CORREÇÃO: Adicionado 'orderBy' nas importações
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -21,7 +20,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Exporta as ferramentas para os outros arquivos usarem
-// CORREÇÃO: Adicionado 'orderBy' na lista final
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, 
