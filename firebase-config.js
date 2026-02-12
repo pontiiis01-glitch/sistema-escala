@@ -1,9 +1,9 @@
-// Importações via CDN (para funcionar direto no navegador/GitHub Pages)
+// Importações via CDN (Versão 10.7.1)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Suas chaves do projeto "escala-unificada"
+// SUAS CHAVES DO PROJETO (JÁ CONFIGURADAS)
 const firebaseConfig = {
   apiKey: "AIzaSyD09C5yNzXPKD0j009yk-1XPRKZePoQW-o",
   authDomain: "escala-unificada.firebaseapp.com",
@@ -20,4 +20,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Exporta as ferramentas para os outros arquivos usarem
-export { auth, db, signInWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc };
+export { 
+    auth, db, 
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, 
+    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc 
+};
