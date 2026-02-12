@@ -61,14 +61,31 @@ async function carregarListaUnidades() {
     const select = document.getElementById('select-unidade');
     select.innerHTML = "<option value=''>Carregando...</option>";
     
-    const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
-    const snapshot = await getDocs(q);
-    
-    select.innerHTML = "<option value='' selected>Selecione a Unidade (BBM/CIA)...</option>";
-    
-    let unidades = [];
-    snapshot.forEach(doc => unidades.push(doc.data().unidade));
-    unidades.sort().forEach(u => select.innerHTML += `<option value="${u}">${u}</option>`);
+    try {
+        // Busca apenas usuários com a função 'escalante'
+        const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            select.innerHTML = "<option value=''>Nenhuma unidade cadastrada</option>";
+            return;
+        }
+
+        select.innerHTML = "<option value='' selected>Selecione a Unidade (BBM/CIA)...</option>";
+        
+        let unidades = [];
+        snapshot.forEach(doc => unidades.push(doc.data().unidade));
+        
+        // Remove duplicatas e ordena
+        unidades = [...new Set(unidades)].sort();
+        
+        unidades.forEach(u => select.innerHTML += `<option value="${u}">${u}</option>`);
+        
+    } catch (e) {
+        console.error("Erro ao carregar unidades:", e);
+        select.innerHTML = "<option value=''>Erro de permissão/conexão</option>";
+        alert("ATENÇÃO: Não foi possível carregar a lista de unidades.\n\nProvável causa: As 'Regras de Segurança' (Rules) do Firestore estão bloqueando a leitura.\n\nErro técnico: " + e.message);
+    }
 }
 
 export function adicionarOrdem() {
@@ -157,45 +174,50 @@ async function carregarEventosAdmin() {
     const lista = document.getElementById('lista-eventos-admin');
     lista.innerHTML = "<div class='text-center small py-3'>Atualizando histórico...</div>";
 
-    const q = query(collection(db, "escalas"), orderBy("data", "desc"));
-    const snapshot = await getDocs(q);
-    
-    const grupos = new Map();
+    try {
+        const q = query(collection(db, "escalas"), orderBy("data", "desc"));
+        const snapshot = await getDocs(q);
+        
+        const grupos = new Map();
 
-    snapshot.forEach(doc => {
-        const d = doc.data();
-        const chave = `${d.evento}|${d.data}`;
-        if (!grupos.has(chave)) grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
-        const g = grupos.get(chave);
-        g.total++;
-        if (d.status === "Preenchido") g.respondidos++;
-    });
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            const chave = `${d.evento}|${d.data}`;
+            if (!grupos.has(chave)) grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
+            const g = grupos.get(chave);
+            g.total++;
+            if (d.status === "Preenchido") g.respondidos++;
+        });
 
-    lista.innerHTML = "";
-    if (grupos.size === 0) lista.innerHTML = "<div class='text-center text-muted small py-4'>Nenhuma missão registrada.</div>";
+        lista.innerHTML = "";
+        if (grupos.size === 0) lista.innerHTML = "<div class='text-center text-muted small py-4'>Nenhuma missão registrada.</div>";
 
-    grupos.forEach((info) => {
-        const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-        const percentual = Math.round((info.respondidos / info.total) * 100);
-        const corStatus = percentual === 100 ? "text-success" : "text-warning";
-        const icon = percentual === 100 ? "bi-check-circle-fill" : "bi-clock-history";
+        grupos.forEach((info) => {
+            const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+            const percentual = Math.round((info.respondidos / info.total) * 100);
+            const corStatus = percentual === 100 ? "text-success" : "text-warning";
+            const icon = percentual === 100 ? "bi-check-circle-fill" : "bi-clock-history";
 
-        lista.innerHTML += `
-            <div class="list-group-item list-group-item-action cursor-pointer p-3 border-bottom" 
-                 onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong class="text-dark">${info.evento}</strong>
-                    <span class="badge bg-light text-dark border">${dataBr}</span>
-                </div>
-                <div class="d-flex justify-content-between small text-muted align-items-center">
-                    <span><i class="bi ${icon} ${corStatus} me-1"></i> ${info.respondidos}/${info.total} Unidades</span>
-                    <span class="fw-bold">${percentual}%</span>
-                </div>
-                <div class="progress mt-2" style="height: 4px; background-color: #eee;">
-                    <div class="progress-bar ${percentual === 100 ? 'bg-success' : 'bg-warning'}" style="width: ${percentual}%"></div>
-                </div>
-            </div>`;
-    });
+            lista.innerHTML += `
+                <div class="list-group-item list-group-item-action cursor-pointer p-3 border-bottom" 
+                     onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong class="text-dark">${info.evento}</strong>
+                        <span class="badge bg-light text-dark border">${dataBr}</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted align-items-center">
+                        <span><i class="bi ${icon} ${corStatus} me-1"></i> ${info.respondidos}/${info.total} Unidades</span>
+                        <span class="fw-bold">${percentual}%</span>
+                    </div>
+                    <div class="progress mt-2" style="height: 4px; background-color: #eee;">
+                        <div class="progress-bar ${percentual === 100 ? 'bg-success' : 'bg-warning'}" style="width: ${percentual}%"></div>
+                    </div>
+                </div>`;
+        });
+    } catch(e) {
+        console.error(e);
+        lista.innerHTML = "<div class='text-danger small text-center'>Erro ao carregar histórico.</div>";
+    }
 }
 
 export async function abrirPreview(nomeEvento, dataEvento) {
@@ -210,26 +232,30 @@ export async function abrirPreview(nomeEvento, dataEvento) {
     const corpo = document.getElementById('tabela-preview-corpo');
     corpo.innerHTML = "<tr><td colspan='4' class='text-center py-4'>Carregando detalhes...</td></tr>";
 
-    const q = query(collection(db, "escalas"), where("evento", "==", nomeEvento), where("data", "==", dataEvento));
-    const snapshot = await getDocs(q);
-    
-    let html = "";
-    snapshot.forEach(docSnap => {
-        const d = docSnap.data();
-        const statusBadge = d.status === "Preenchido" 
-            ? `<span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">OK</span>` 
-            : `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1">Pendente</span>`;
+    try {
+        const q = query(collection(db, "escalas"), where("evento", "==", nomeEvento), where("data", "==", dataEvento));
+        const snapshot = await getDocs(q);
         
-        const linhas = d.militares ? d.militares.split('\n').filter(l => l.trim().length > 3).length : 0;
-        
-        html += `<tr>
-            <td class="ps-3 fw-bold">${d.unidade}</td>
-            <td><small class="text-muted">${d.funcao}</small></td>
-            <td>${statusBadge}</td>
-            <td class="fw-bold text-dark">${linhas}</td>
-        </tr>`;
-    });
-    corpo.innerHTML = html;
+        let html = "";
+        snapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            const statusBadge = d.status === "Preenchido" 
+                ? `<span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">OK</span>` 
+                : `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1">Pendente</span>`;
+            
+            const linhas = d.militares ? d.militares.split('\n').filter(l => l.trim().length > 3).length : 0;
+            
+            html += `<tr>
+                <td class="ps-3 fw-bold">${d.unidade}</td>
+                <td><small class="text-muted">${d.funcao}</small></td>
+                <td>${statusBadge}</td>
+                <td class="fw-bold text-dark">${linhas}</td>
+            </tr>`;
+        });
+        corpo.innerHTML = html;
+    } catch(e) {
+        corpo.innerHTML = "<tr><td colspan='4' class='text-danger text-center'>Erro ao carregar detalhes.</td></tr>";
+    }
 }
 
 export async function baixarExcelDoEvento() {
@@ -295,9 +321,8 @@ async function carregarPendenciasUnidade() {
     const lista = document.getElementById('lista-unidade');
     lista.innerHTML = "<div class='text-center w-100'>Carregando suas missões...</div>";
     
-    const q = query(collection(db, "escalas"), where("unidade", "==", perfilAtual.unidade), orderBy("data", "asc"));
-    
     try {
+        const q = query(collection(db, "escalas"), where("unidade", "==", perfilAtual.unidade), orderBy("data", "asc"));
         const snapshot = await getDocs(q);
         lista.innerHTML = "";
         if (snapshot.empty) return lista.innerHTML = "<div class='text-muted text-center w-100 mt-4'>Nenhuma solicitação pendente. Tudo calmo por aqui.</div>";
@@ -334,7 +359,10 @@ async function carregarPendenciasUnidade() {
                     </div>
                 </div>`;
         });
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+        console.error(e);
+        lista.innerHTML = "<div class='text-danger text-center w-100 mt-4'>Erro ao carregar missões. Verifique as regras.</div>";
+    }
 }
 
 export async function abrirEdicao(id, evento, of, pra, func) {
