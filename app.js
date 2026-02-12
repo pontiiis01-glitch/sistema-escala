@@ -1,310 +1,249 @@
-import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc } from './firebase-config.js';
+import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy } from './firebase-config.js';
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
 let usuarioAtual = null;
 let perfilAtual = null;
 let escalaSelecionadaId = null;
+let eventoPreviewAtual = null; // Guarda qual evento estamos visualizando na prévia
 
-// =======================================================
-// 1. SISTEMA DE AUTENTICAÇÃO
-// =======================================================
-
+// ================= AUTH =================
 export async function fazerLogin() {
     const email = document.getElementById('email-login').value;
     const senha = document.getElementById('senha-login').value;
-    const msg = document.getElementById('msg-erro');
-    
-    try {
-        await signInWithEmailAndPassword(auth, email, senha);
-    } catch (error) {
-        if(msg) msg.innerText = "Erro ao entrar: Verifique email e senha.";
-        console.error("Erro Login:", error);
-    }
+    try { await signInWithEmailAndPassword(auth, email, senha); } 
+    catch (e) { document.getElementById('msg-erro').innerText = "Login inválido."; }
 }
 
 export async function fazerCadastro() {
     const email = document.getElementById('email-cadastro').value;
     const senha = document.getElementById('senha-cadastro').value;
     const unidade = document.getElementById('unidade-cadastro').value;
-    const msg = document.getElementById('msg-erro');
-
-    if (!email || !senha || !unidade) {
-        if(msg) msg.innerText = "Preencha todos os campos.";
-        return;
-    }
-
+    if(!email || !senha || !unidade) return alert("Preencha tudo.");
+    
     try {
-        // 1. Cria usuário
-        const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-        const user = userCredential.user;
-
-        // 2. Salva perfil
-        await setDoc(doc(db, "usuarios", user.uid), {
-            email: email,
-            unidade: unidade.toUpperCase(),
-            funcao: "escalante"
+        const cred = await createUserWithEmailAndPassword(auth, email, senha);
+        await setDoc(doc(db, "usuarios", cred.user.uid), {
+            email, unidade: unidade.toUpperCase(), funcao: "escalante"
         });
-
-        alert("Cadastro realizado! Bem-vindo, " + unidade);
-        // O onAuthStateChanged vai rodar e logar automaticamente
-
-    } catch (error) {
-        console.error("Erro Cadastro:", error);
-        if(msg) {
-            if (error.code === 'auth/email-already-in-use') msg.innerText = "Email já cadastrado.";
-            else if (error.code === 'auth/weak-password') msg.innerText = "Senha muito fraca (mínimo 6 dígitos).";
-            else msg.innerText = "Erro: " + error.message;
-        }
-    }
+        alert("Cadastrado!");
+    } catch (e) { alert("Erro: " + e.message); }
 }
 
-export function sair() {
-    signOut(auth).then(() => window.location.reload());
-}
-
-// =======================================================
-// MONITORAMENTO DE ESTADO (Aqui estava o erro)
-// =======================================================
-
-// Função auxiliar para trocar telas sem quebrar o sistema
-function mostrarTela(nomeTela) {
-    const telaAuth = document.getElementById('auth-container');
-    const telaDash = document.getElementById('dashboard-screen');
-
-    // Só tenta mexer se o elemento existir no HTML
-    if (telaAuth && telaDash) {
-        if (nomeTela === 'auth') {
-            telaAuth.style.display = 'block';
-            telaDash.style.display = 'none';
-        } else {
-            telaAuth.style.display = 'none';
-            telaDash.style.display = 'block';
-        }
-    } else {
-        console.warn("Aviso: IDs 'auth-container' ou 'dashboard-screen' não encontrados no HTML. Verifique o index.html");
-    }
-}
+export function sair() { signOut(auth).then(() => location.reload()); }
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioAtual = user;
-        const docRef = doc(db, "usuarios", user.uid);
-        
-        try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                perfilAtual = docSnap.data();
-                iniciarDashboard();
+        const snap = await getDoc(doc(db, "usuarios", user.uid));
+        if (snap.exists()) {
+            perfilAtual = snap.data();
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('dashboard-screen').style.display = 'block';
+            document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
+            
+            if (perfilAtual.funcao === 'admin') {
+                document.getElementById('admin-area').style.display = 'block';
+                carregarEventosAdmin();
             } else {
-                alert("Erro: Usuário logado mas sem perfil. Contate o suporte.");
-                sair();
+                document.getElementById('unidade-area').style.display = 'block';
+                carregarPendenciasUnidade();
             }
-        } catch (e) {
-            console.error("Erro ao buscar perfil:", e);
         }
-    } else {
-        mostrarTela('auth');
     }
 });
 
-function iniciarDashboard() {
-    mostrarTela('dashboard');
-    
-    // Atualiza o título se o elemento existir
-    const titulo = document.getElementById('titulo-unidade');
-    if(titulo) titulo.innerText = perfilAtual.unidade;
+// ================= ADMIN: DISPARO EM MASSA =================
+export async function dispararSolicitacao() {
+    const evento = document.getElementById('nome-evento').value.trim();
+    const data = document.getElementById('data-evento').value;
+    const funcao = document.getElementById('funcao-evento').value;
+    const qtdOficiais = document.getElementById('qtd-oficiais').value;
+    const qtdPracas = document.getElementById('qtd-pracas').value;
+    const textoUnidades = document.getElementById('lista-unidades-alvo').value;
 
-    const adminArea = document.getElementById('admin-area');
-    const unidadeArea = document.getElementById('unidade-area');
+    if (!evento || !data || !textoUnidades) return alert("Preencha nome, data e unidades.");
 
-    if (adminArea && unidadeArea) {
-        if (perfilAtual.funcao === 'admin') {
-            adminArea.style.display = 'block';
-            carregarDadosAdmin();
-        } else {
-            unidadeArea.style.display = 'block';
-            carregarDadosUnidade();
-        }
-    }
-}
+    // Transforma "1GBM, 2GBM, BEM" em ["1GBM", "2GBM", "BEM"]
+    const listaUnidades = textoUnidades.split(',').map(u => u.trim()).filter(u => u !== "");
 
-// =======================================================
-// 2. FUNÇÕES DO COMANDO (ADMIN)
-// =======================================================
-
-export async function criarEscala() {
-    const evento = document.getElementById('nome-evento').value;
-    const unidade = document.getElementById('unidade-alvo').value;
-
-    if (!evento || !unidade) return alert("Preencha todos os campos!");
+    if (listaUnidades.length === 0) return alert("Nenhuma unidade válida identificada.");
 
     try {
-        await addDoc(collection(db, "escalas"), {
-            evento: evento,
-            unidade: unidade.toUpperCase(),
-            status: "Pendente",
-            militares: "",
-            dataCriacao: new Date()
+        const promises = listaUnidades.map(unidade => {
+            return addDoc(collection(db, "escalas"), {
+                evento: evento,
+                data: data,
+                unidade: unidade.toUpperCase(),
+                funcao: funcao,
+                cota: { oficial: qtdOficiais, praca: qtdPracas },
+                status: "Pendente",
+                militares: "",
+                criadoEm: new Date()
+            });
         });
-        alert("Solicitação enviada!");
+
+        await Promise.all(promises);
+        alert(`Sucesso! ${listaUnidades.length} solicitações enviadas.`);
+        
+        // Limpa form
         document.getElementById('nome-evento').value = "";
-        document.getElementById('unidade-alvo').value = "";
-        carregarDadosAdmin();
+        document.getElementById('lista-unidades-alvo').value = "";
+        carregarEventosAdmin();
+
     } catch (e) {
-        alert("Erro ao criar: " + e.message);
         console.error(e);
+        alert("Erro ao disparar: " + e.message);
     }
 }
 
-async function carregarDadosAdmin() {
-    const lista = document.getElementById('lista-admin');
-    if(!lista) return;
+// ================= ADMIN: VISUALIZAÇÃO AGRUPADA =================
+async function carregarEventosAdmin() {
+    const lista = document.getElementById('lista-eventos-admin');
+    lista.innerHTML = "<div class='text-center small'>Atualizando...</div>";
 
-    lista.innerHTML = "<div class='text-center p-2'>Atualizando...</div>";
+    // Pega todas as escalas
+    const q = query(collection(db, "escalas"), orderBy("data", "desc"));
+    const snapshot = await getDocs(q);
     
-    const q = query(collection(db, "escalas"));
-    const querySnapshot = await getDocs(q);
-    
-    lista.innerHTML = "";
-    if (querySnapshot.empty) {
-        lista.innerHTML = "<div class='list-group-item'>Nenhuma solicitação.</div>";
-        return;
-    }
+    // Agrupa por "Evento + Data" para não repetir na lista
+    // Chave do Mapa: "Carnaval|2026-02-12"
+    const grupos = new Map();
 
-    querySnapshot.forEach((doc) => {
-        const dados = doc.data();
-        const corStatus = dados.status === "Pendente" ? "text-danger fw-bold" : "text-success fw-bold";
+    snapshot.forEach(doc => {
+        const d = doc.data();
+        const chave = `${d.evento}|${d.data}`;
         
+        if (!grupos.has(chave)) {
+            grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
+        }
+        
+        const g = grupos.get(chave);
+        g.total++;
+        if (d.status === "Preenchido") g.respondidos++;
+    });
+
+    lista.innerHTML = "";
+    if (grupos.size === 0) lista.innerHTML = "<div class='text-muted small p-3'>Nada encontrado.</div>";
+
+    grupos.forEach((info, chave) => {
+        // Formata data para BR
+        const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        const percentual = Math.round((info.respondidos / info.total) * 100);
+        const corBarra = percentual === 100 ? "bg-success" : "bg-warning";
+
         lista.innerHTML += `
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${dados.unidade}</strong>
-                    <div class="small text-muted">${dados.evento}</div>
+            <div class="list-group-item list-group-item-action cursor-pointer p-3 mb-2 border rounded" 
+                 onclick="window.abrirPreviewWrapper('${info.evento}', '${info.data}')" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong class="text-dark">${info.evento}</strong>
+                    <span class="badge bg-light text-dark border">${dataBr}</span>
                 </div>
-                <span class="${corStatus}">${dados.status}</span>
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Respostas: ${info.respondidos}/${info.total}</span>
+                    <span>${percentual}%</span>
+                </div>
+                <div class="progress" style="height: 6px;">
+                    <div class="progress-bar ${corBarra}" style="width: ${percentual}%"></div>
+                </div>
             </div>`;
     });
 }
 
-// =======================================================
-// 3. FUNÇÕES DA UNIDADE (ESCALANTE)
-// =======================================================
-
-async function carregarDadosUnidade() {
-    const lista = document.getElementById('lista-unidade');
-    if(!lista) return;
-
-    lista.innerHTML = "Carregando...";
-
-    const q = query(collection(db, "escalas"), where("unidade", "==", perfilAtual.unidade));
-    const querySnapshot = await getDocs(q);
+// ================= ADMIN: PRÉVIA E DOWNLOAD =================
+export async function abrirPreview(nomeEvento, dataEvento) {
+    eventoPreviewAtual = { nome: nomeEvento, data: dataEvento }; // Salva contexto
     
-    lista.innerHTML = "";
-    if (querySnapshot.empty) {
-        lista.innerHTML = "<div class='text-muted p-2'>Nenhuma solicitação pendente.</div>";
-        return;
-    }
+    document.getElementById('preview-modal').style.display = 'flex';
+    document.getElementById('preview-titulo').innerText = nomeEvento;
+    document.getElementById('preview-data').innerText = new Date(dataEvento).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+    
+    const corpoTabela = document.getElementById('tabela-preview-corpo');
+    corpoTabela.innerHTML = "<tr><td colspan='3' class='text-center'>Carregando detalhes...</td></tr>";
 
-    querySnapshot.forEach((doc) => {
-        const dados = doc.data();
-        const btnClass = dados.status === "Pendente" ? "btn-outline-danger" : "btn-outline-success";
-        const btnTexto = dados.status === "Pendente" ? "Responder Agora" : "Editar Resposta";
+    // Busca apenas as escalas daquele evento/dia específico
+    const q = query(
+        collection(db, "escalas"), 
+        where("evento", "==", nomeEvento),
+        where("data", "==", dataEvento)
+    );
+    
+    const snapshot = await getDocs(q);
+    let html = "";
+    let totalEfetivo = 0;
 
-        const item = document.createElement('div');
-        item.className = "list-group-item d-flex justify-content-between align-items-center mb-2 shadow-sm border";
-        item.innerHTML = `
-            <div>
-                <h6 class="mb-0 fw-bold">${dados.evento}</h6>
-                <small class="text-muted">Status: ${dados.status}</small>
-            </div>
-            <button class="btn btn-sm ${btnClass}">${btnTexto}</button>
-        `;
+    snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        const statusClass = d.status === "Preenchido" ? "bg-ok" : "bg-pendente";
         
-        item.querySelector('button').onclick = () => abrirEdicao(doc.id, dados.evento, dados.militares);
-        lista.appendChild(item);
+        // Conta linhas não vazias para estimar efetivo
+        const linhas = d.militares ? d.militares.split('\n').filter(l => l.trim().length > 3).length : 0;
+        totalEfetivo += linhas;
+
+        html += `
+            <tr>
+                <td class="fw-bold">${d.unidade}</td>
+                <td><span class="badge-status ${statusClass}">${d.status}</span></td>
+                <td>${linhas} militares</td>
+            </tr>
+        `;
     });
+
+    corpoTabela.innerHTML = html;
+    document.getElementById('preview-total').innerText = totalEfetivo;
 }
 
-function abrirEdicao(id, evento, textoAtual) {
-    escalaSelecionadaId = id;
-    const labelEvento = document.getElementById('evento-atual');
-    const campoTexto = document.getElementById('lista-nomes');
-    const form = document.getElementById('form-militar');
+export async function baixarExcelDoEvento() {
+    if (!eventoPreviewAtual) return;
 
-    if(labelEvento) labelEvento.innerText = evento;
-    if(campoTexto) campoTexto.value = textoAtual || "";
-    if(form) {
-        form.style.display = 'block';
-        form.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-export async function salvarEscala() {
-    if (!escalaSelecionadaId) return;
-    
-    const texto = document.getElementById('lista-nomes').value;
-    const docRef = doc(db, "escalas", escalaSelecionadaId);
-    
-    try {
-        await updateDoc(docRef, {
-            militares: texto,
-            status: "Preenchido"
-        });
-        alert("Sucesso! Escala enviada.");
-        document.getElementById('form-militar').style.display = 'none';
-        carregarDadosUnidade();
-    } catch (e) {
-        alert("Erro ao salvar: " + e.message);
-    }
-}
-
-// =======================================================
-// 4. GERADOR DE EXCEL
-// =======================================================
-
-export async function gerarRelatorioFinal() {
     try {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Escala Operacional');
-
+        const worksheet = workbook.addWorksheet('Escala');
+        
+        // Setup Colunas
         worksheet.columns = [
-            { key: 'ord', width: 8 },
-            { key: 'posto', width: 15 },
-            { key: 'nome', width: 45 },
-            { key: 'contato', width: 20 },
-            { key: 'ubm', width: 15 },
+            { key: 'ord', width: 6 },
+            { key: 'posto', width: 12 },
+            { key: 'nome', width: 40 },
+            { key: 'contato', width: 18 },
+            { key: 'unidade', width: 15 },
             { key: 'funcao', width: 20 }
         ];
 
-        const headerRow = worksheet.addRow(['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO']);
-        
-        headerRow.eachCell((cell) => {
+        // Estilo Cabeçalho
+        const header = worksheet.addRow(['Ord', 'POSTO', 'NOME COMPLETO', 'CONTATO', 'UNIDADE', 'FUNÇÃO']);
+        header.eachCell(cell => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } };
-            cell.font = { name: 'Arial', bold: true, size: 11 };
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.font = { bold: true };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+            cell.alignment = { horizontal: 'center' };
         });
 
-        const q = query(collection(db, "escalas"), where("status", "==", "Preenchido"));
-        const querySnapshot = await getDocs(q);
+        // Busca dados NOVAMENTE para garantir frescor
+        const q = query(
+            collection(db, "escalas"), 
+            where("evento", "==", eventoPreviewAtual.nome),
+            where("data", "==", eventoPreviewAtual.data),
+            where("status", "==", "Preenchido") // Só baixa quem mandou
+        );
         
+        const snapshot = await getDocs(q);
         let contador = 1;
 
-        querySnapshot.forEach((docSnap) => {
-            const dados = docSnap.data();
-            const linhas = dados.militares.split("\n");
-            
-            linhas.forEach(linhaTexto => {
-                if (linhaTexto.trim().length > 3) { 
-                    const partes = linhaTexto.split("-");
-                    
-                    let posto = "SD BM";
-                    let nome = partes[0] ? partes[0].trim() : "NOME INVÁLIDO";
-                    let telefone = partes[1] ? partes[1].trim() : "S/ CONTATO";
+        snapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            const linhas = d.militares.split('\n');
 
-                    const espaco = nome.indexOf(" ");
-                    if (espaco > 0 && espaco <= 6) {
+            linhas.forEach(linha => {
+                if (linha.trim().length > 3) {
+                    const partes = linha.split('-');
+                    let posto = "SD BM";
+                    let nome = partes[0] ? partes[0].trim() : "";
+                    let contato = partes[1] ? partes[1].trim() : "";
+
+                    // Detecção simples de posto
+                    const espaco = nome.indexOf(' ');
+                    if (espaco > 0 && espaco < 7) {
                         posto = nome.substring(0, espaco).toUpperCase();
                         nome = nome.substring(espaco).trim().toUpperCase();
                     }
@@ -313,37 +252,114 @@ export async function gerarRelatorioFinal() {
                         ord: contador++,
                         posto: posto,
                         nome: nome,
-                        contato: telefone,
-                        ubm: dados.unidade,
-                        funcao: "SOCORRISTA"
+                        contato: contato,
+                        unidade: d.unidade,
+                        funcao: d.funcao.toUpperCase()
                     });
-
+                    
+                    // Estiliza linha
                     row.eachCell((cell, colNum) => {
-                        cell.font = { name: 'Arial', size: 11 };
                         cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                        
-                        if(colNum === 3) { 
-                            cell.alignment = { horizontal: 'left', indent: 1 };
-                            cell.font = { name: 'Arial', size: 11, bold: true };
-                        }
-                        if(colNum === 6) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } };
-                        }
+                        cell.alignment = { horizontal: 'center' };
+                        if(colNum === 3) cell.alignment = { horizontal: 'left', indent: 1 }; // Nome esquerda
+                        if(colNum === 6) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } }; // Azul Função
                     });
                 }
             });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        saveAs(blob, "Escala_CBMMA_Final.xlsx");
+        saveAs(new Blob([buffer]), `${eventoPreviewAtual.nome}_${eventoPreviewAtual.data}.xlsx`);
 
     } catch (e) {
-        console.error(e);
         alert("Erro ao gerar Excel: " + e.message);
     }
 }
 
-// Expor funções para o HTML (Agora isso vai rodar mesmo se tiver erro de ID)
-window.app = { fazerLogin, fazerCadastro, sair, criarEscala, salvarEscala, gerarRelatorioFinal };
+// ================= UNIDADE: RESPOSTA =================
+async function carregarPendenciasUnidade() {
+    const lista = document.getElementById('lista-unidade');
+    lista.innerHTML = "Carregando...";
+    
+    // Ordena pela data mais próxima
+    const q = query(
+        collection(db, "escalas"), 
+        where("unidade", "==", perfilAtual.unidade),
+        orderBy("data", "asc")
+    );
+
+    try {
+        const snapshot = await getDocs(q);
+        lista.innerHTML = "";
+        
+        if (snapshot.empty) return lista.innerHTML = "<div class='text-muted'>Nada pendente.</div>";
+
+        snapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            const dataFmt = new Date(d.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+            const statusColor = d.status === "Pendente" ? "border-danger" : "border-success";
+            const icon = d.status === "Pendente" ? "bi-exclamation-circle" : "bi-check-circle";
+
+            lista.innerHTML += `
+                <div class="col-md-6">
+                    <div class="card p-3 h-100 ${statusColor} border-start border-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="badge bg-secondary">${dataFmt}</span>
+                            <span class="fw-bold small ${d.status === 'Pendente' ? 'text-danger' : 'text-success'}">
+                                <i class="bi ${icon}"></i> ${d.status}
+                            </span>
+                        </div>
+                        <h6 class="fw-bold mb-1">${d.evento}</h6>
+                        <div class="small text-muted mb-3">
+                            Meta: ${d.cota.oficial} Oficiais | ${d.cota.praca} Praças
+                            <br>Função: ${d.funcao}
+                        </div>
+                        <button onclick="window.app.abrirEdicao('${docSnap.id}', '${d.evento}', '${d.cota.oficial}', '${d.cota.praca}', '${d.funcao}')" 
+                                class="btn btn-sm btn-outline-primary w-100">
+                            ${d.status === 'Pendente' ? 'Preencher Escala' : 'Editar Enviado'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    } catch(e) {
+        console.error(e); // Geralmente erro de índice composto
+        if(e.message.includes("index")) alert("Atenção Admin: É necessário criar um índice no Firestore. Abra o console (F12) para ver o link.");
+    }
+}
+
+export async function abrirEdicao(id, evento, of, pra, func) {
+    escalaSelecionadaId = id;
+    
+    // Busca o texto atual do documento para preencher o textarea
+    const docRef = doc(db, "escalas", id);
+    const docSnap = await getDoc(docRef);
+    const textoAtual = docSnap.data().militares || "";
+
+    document.getElementById('titulo-evento-form').innerText = evento;
+    document.getElementById('meta-oficiais').innerText = of;
+    document.getElementById('meta-pracas').innerText = pra;
+    document.getElementById('meta-funcao').innerText = func;
+    document.getElementById('lista-nomes').value = textoAtual;
+    
+    document.getElementById('form-militar').style.display = 'block';
+    document.getElementById('form-militar').scrollIntoView({ behavior: 'smooth' });
+}
+
+export async function salvarEscala() {
+    if (!escalaSelecionadaId) return;
+    const texto = document.getElementById('lista-nomes').value;
+    
+    try {
+        await updateDoc(doc(db, "escalas", escalaSelecionadaId), {
+            militares: texto,
+            status: "Preenchido"
+        });
+        alert("Enviado com sucesso!");
+        document.getElementById('form-militar').style.display = 'none';
+        carregarPendenciasUnidade();
+    } catch (e) { alert("Erro: " + e.message); }
+}
+
+// Exportação global
+window.app = { fazerLogin, fazerCadastro, sair, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento };
