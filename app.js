@@ -2,8 +2,8 @@ import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, o
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
-// === CONSTANTES E LISTAS ===
-const UNIDADES_CBMMA = [
+// === LISTA FIXA APENAS PARA CADASTRO ===
+const UNIDADES_CBMMA_FIXAS = [
     "1 BBM", "2 BBM", "1 CIEBM", "10 BBM", "13 BBM", "16 CIBM", "BBS", "BBA", "BMUS", "CGCS", "DEP", "DAT", "DP", "DF", "DPM", "DAL", "CPP", "CPO", 
     "1 Seção", "2 Seção", "3 Seção", "4 Seção", "CAPS", "CRF", "CEPDECMA", "ASPIRANTES", "CADETES", "DER", 
     "CMCB I", "CMCB II - SJR", "CMCB XII - PAÇO", "CMCB XIII - GUANABARA", "CMCB XXVI - PIO XII", 
@@ -26,25 +26,19 @@ let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
 
 // === INICIALIZAÇÃO ===
-// Executa assim que o script carrega para garantir que os selects existam
-setTimeout(popularSelects, 500);
+document.addEventListener('DOMContentLoaded', () => {
+    popularSelectCadastroEFuncoes();
+});
 
-function popularSelects() {
-    // Select Cadastro
+function popularSelectCadastroEFuncoes() {
+    // 1. Popula APENAS o select de CADASTRO com a lista fixa
     const selCadastro = document.getElementById('unidade-cadastro');
     if(selCadastro && selCadastro.options.length <= 1) {
         selCadastro.innerHTML = "<option value=''>Selecione a Unidade...</option>";
-        UNIDADES_CBMMA.forEach(u => selCadastro.innerHTML += `<option value="${u}">${u}</option>`);
+        UNIDADES_CBMMA_FIXAS.forEach(u => selCadastro.innerHTML += `<option value="${u}">${u}</option>`);
     }
 
-    // Select Admin Unidades
-    const selAdminUni = document.getElementById('select-unidade');
-    if(selAdminUni) {
-        selAdminUni.innerHTML = "<option value=''>Selecione a Unidade...</option>";
-        UNIDADES_CBMMA.forEach(u => selAdminUni.innerHTML += `<option value="${u}">${u}</option>`);
-    }
-
-    // Select Funções (Admin e Edit)
+    // 2. Popula Funções
     const selectsFuncao = [document.getElementById('select-funcao'), document.getElementById('edit-admin-funcao')];
     selectsFuncao.forEach(sel => {
         if(sel) {
@@ -52,6 +46,40 @@ function popularSelects() {
             FUNCOES_TATICAS.forEach(f => sel.innerHTML += `<option value="${f}">${f}</option>`);
         }
     });
+}
+
+// Função Nova: Carrega no Admin APENAS unidades que existem no banco
+async function carregarUnidadesCadastradasNoAdmin() {
+    const selAdmin = document.getElementById('select-unidade');
+    if(!selAdmin) return;
+    
+    selAdmin.innerHTML = "<option value=''>Carregando...</option>";
+    
+    try {
+        // Busca usuários que são "escalante"
+        const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
+        const snapshot = await getDocs(q);
+        
+        const unidadesReais = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if(data.unidade) unidadesReais.push(data.unidade);
+        });
+
+        // Remove duplicatas e ordena
+        const unidadesUnicas = [...new Set(unidadesReais)].sort();
+
+        selAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
+        if(unidadesUnicas.length === 0) {
+            selAdmin.innerHTML += "<option disabled>Nenhuma unidade cadastrada</option>";
+        } else {
+            unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${u}">${u}</option>`);
+        }
+
+    } catch (e) {
+        console.error("Erro ao carregar unidades:", e);
+        selAdmin.innerHTML = "<option value=''>Erro ao carregar</option>";
+    }
 }
 
 // ================= AUTH =================
@@ -72,7 +100,7 @@ export async function fazerLogin() {
     } 
     catch (e) { 
         console.error(e); 
-        document.getElementById('msg-erro').innerText = "Credenciais inválidas ou erro de conexão.";
+        document.getElementById('msg-erro').innerText = "Credenciais inválidas.";
         btn.innerHTML = textoOriginal; btn.disabled = false;
     }
 }
@@ -100,9 +128,7 @@ onAuthStateChanged(auth, async (user) => {
         if (snap.exists()) {
             perfilAtual = snap.data();
             
-            // Transição Suave
             const loginArea = document.getElementById('login-area-wrapper');
-            loginArea.style.transition = 'opacity 0.3s';
             loginArea.style.opacity = '0';
             
             setTimeout(() => {
@@ -112,11 +138,12 @@ onAuthStateChanged(auth, async (user) => {
                 setTimeout(() => dash.classList.add('visible'), 50);
                 
                 document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
-                popularSelects(); // Reforça o preenchimento dos selects
+                popularSelectCadastroEFuncoes();
 
                 if (perfilAtual.funcao === 'admin') {
                     document.getElementById('admin-area').style.display = 'block';
                     carregarEventosAdmin();
+                    carregarUnidadesCadastradasNoAdmin(); // <--- Carrega apenas unidades reais
                 } else {
                     document.getElementById('unidade-area').style.display = 'block';
                     carregarPendenciasUnidade();
@@ -348,9 +375,7 @@ async function carregarPendenciasUnidade() {
         docs.sort((a,b) => new Date(a.data) - new Date(b.data));
 
         docs.forEach(d => {
-            // *** CORREÇÃO DO ERRO DE LEITURA ***
             const cota = d.cota || { oficial: 0, praca: 0 }; 
-            
             const isPendente = d.status === "Pendente";
             let isBloqueado = false;
             let textoPrazo = "";
@@ -401,7 +426,6 @@ export async function abrirEdicao(id) {
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
 
     let contador = 0;
-    // Garante que é número para evitar erro de loop
     const qtdOf = parseInt(cota.oficial) || 0;
     const qtdPc = parseInt(cota.praca) || 0;
 
@@ -488,6 +512,7 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
+// === EXCEL PROFISSIONAL PADRÃO ANEXO ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -496,21 +521,39 @@ export async function baixarExcelDoEvento() {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
 
+        // --- LINHA 1: TÍTULO AMARELO ---
+        const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
-        worksheet.getCell('A1').value = "COMANDO OPERACIONAL METROPOLITANO - CBMMA";
-        worksheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
-        worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF990000' } };
-        worksheet.getCell('A1').alignment = { horizontal: 'center' };
+        titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}`;
+        
+        // Estilo conforme imagem (Amarelo, Texto Preto Negrito, Centralizado)
+        titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Amarelo
+        titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } }; // Preto
+        titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        titleRow.height = 30;
 
-        worksheet.mergeCells('A2:F2');
-        worksheet.getCell('A2').value = `EVENTO: ${eventoPreviewAtual.nome}  |  DATA: ${new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}`;
-        worksheet.getCell('A2').font = { bold: true, size: 12 };
-        worksheet.getCell('A2').alignment = { horizontal: 'center' };
+        // --- LINHA 2: CABEÇALHO CINZA ---
+        const headerRow = worksheet.getRow(2);
+        headerRow.values = ['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO'];
+        
+        // Estilo Cabeçalho (Cinza, Borda, Negrito, Centralizado)
+        for(let i = 1; i <= 6; i++) {
+            const cell = headerRow.getCell(i);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Cinza Claro
+            cell.font = { bold: true, color: { argb: 'FF000000' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        }
 
-        worksheet.getRow(4).values = ['ORD', 'POSTO/GRAD - NOME DE GUERRA', 'NOME COMPLETO', 'CONTATO', 'UNIDADE', 'FUNÇÃO'];
-        worksheet.getRow(4).font = { bold: true };
-        worksheet.getRow(4).alignment = { horizontal: 'center' };
-        worksheet.columns = [{ key: 'ord', width: 8 }, { key: 'guerra', width: 40 }, { key: 'nome', width: 40 }, { key: 'contato', width: 15 }, { key: 'unidade', width: 15 }, { key: 'funcao', width: 20 }];
+        // Largura das Colunas
+        worksheet.columns = [
+            { width: 8 },  // Ord
+            { width: 15 }, // Posto
+            { width: 50 }, // Nome
+            { width: 18 }, // Contato
+            { width: 15 }, // UBM
+            { width: 20 }  // Função
+        ];
 
         let contador = 1;
         snapshot.forEach(docSnap => {
@@ -519,14 +562,33 @@ export async function baixarExcelDoEvento() {
             try { militares = JSON.parse(d.militares); } catch { return; }
 
             militares.forEach(m => {
-                const row = worksheet.addRow({
-                    ord: contador++, guerra: `${m.posto} ${m.guerra.toUpperCase()}`,
-                    nome: m.nome.toUpperCase(), contato: m.contato, unidade: d.unidade, funcao: d.funcao
+                const row = worksheet.addRow([
+                    contador++, 
+                    m.posto, 
+                    '', // Placeholder para Nome Rico
+                    m.contato, 
+                    d.unidade, 
+                    d.funcao
+                ]);
+
+                // RICH TEXT NO NOME (Guerra em Negrito)
+                row.getCell(3).value = {
+                    richText: [
+                        { text: m.guerra.toUpperCase(), font: { bold: true, name: 'Arial' } },
+                        { text: "  " + m.nome.toUpperCase(), font: { bold: false, name: 'Arial' } }
+                    ]
+                };
+
+                // Formatação Geral das Células da Linha
+                row.eachCell((cell) => {
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 });
-                row.getCell('guerra').font = { bold: true };
-                row.alignment = { vertical: 'middle', horizontal: 'center' };
-                row.getCell('guerra').alignment = { vertical: 'middle', horizontal: 'left' };
-                row.getCell('nome').alignment = { vertical: 'middle', horizontal: 'left' };
+
+                // Alinhamento específico para Nome (Esquerda)
+                row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+                
+                // Função (Amarelo se for Oficial ou Destaque - Opcional, mantendo simples por enquanto)
             });
         });
 

@@ -21,7 +21,7 @@ import {
     updateDoc, 
     orderBy, 
     deleteDoc,
-    writeBatch // <--- ADICIONADO AQUI
+    writeBatch // <--- Exportação crucial para deletar histórico
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -38,7 +38,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Exportação corrigida incluindo writeBatch
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
