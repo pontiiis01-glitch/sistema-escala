@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         :root {
@@ -18,7 +19,6 @@
             --glass-bg: rgba(255, 255, 255, 0.95);
             --glass-border: 1px solid rgba(255, 255, 255, 0.5);
             --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.1);
-            --shadow-hover: 0 20px 50px -10px rgba(206, 0, 0, 0.15);
         }
 
         body {
@@ -29,7 +29,6 @@
             overflow-x: hidden;
         }
 
-        /* --- Header Premium Centralizado (MAIOR) --- */
         .navbar-custom {
             background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-color) 100%);
             padding: 1rem 0;
@@ -39,18 +38,9 @@
             z-index: 10;
         }
         
-        .brasao-img {
-            height: 75px; /* Aumentado de 55px para 75px */
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-            transition: transform 0.3s ease;
-        }
+        .brasao-img { height: 75px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); transition: transform 0.3s ease; }
         .brasao-img:hover { transform: scale(1.05); }
 
-        /* Textos do Header maiores */
-        .brand-text h5 { font-size: 1.4rem; }
-        .brand-text small { font-size: 0.9rem; }
-
-        /* --- Cards e Glassmorphism --- */
         .glass-card {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
@@ -58,12 +48,8 @@
             border: var(--glass-border);
             border-radius: 20px;
             box-shadow: var(--shadow-soft);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        .glass-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
-
-        /* --- Destaque do Nome da Unidade --- */
         #titulo-unidade {
             font-size: 2.5rem;
             color: var(--primary-color);
@@ -71,27 +57,21 @@
             letter-spacing: -0.5px !important;
         }
 
-        /* --- Inputs e Botões --- */
         .form-control, .form-select {
-            border-radius: 12px;
-            padding: 12px 15px;
-            border: 1px solid #e1e5ea;
-            background-color: #f8f9fa;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            font-size: 0.9rem;
         }
         .form-control:focus, .form-select:focus {
-            background-color: #fff;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(206, 0, 0, 0.1);
+            box-shadow: 0 0 0 3px rgba(206, 0, 0, 0.1);
         }
 
         .btn-custom {
             border-radius: 12px;
             padding: 12px 20px;
             font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
             text-transform: uppercase;
             font-size: 0.85rem;
             border: none;
@@ -105,45 +85,31 @@
         .btn-primary-cbm:hover {
             background: linear-gradient(45deg, var(--primary-dark), var(--primary-color));
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(206, 0, 0, 0.4);
             color: white;
         }
 
-        /* --- Tabela de Ordens --- */
-        .order-list-container {
+        .input-militar-group {
             background: #fff;
-            border-radius: 15px;
-            border: 1px solid #eee;
-            overflow: hidden;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+            transition: all 0.3s;
         }
-        .table-custom th {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            border-bottom: 2px solid #eee;
-        }
-        .table-custom td { vertical-align: middle; }
+        .input-militar-group:hover { border-color: #ce0000; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
 
-        /* --- Animações --- */
-        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; opacity: 0; transform: translateY(20px); }
+        .fade-in { animation: fadeIn 0.6s forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         .delay-1 { animation-delay: 0.1s; }
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
 
-        /* --- Modal (Caixa de Diálogo) Melhorada --- */
         #preview-modal { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); }
-        
         .preview-content { 
-            background: rgba(255, 255, 255, 0.98); /* Fundo quase branco, levemente transparente */
-            border-radius: 25px; /* Bordas mais arredondadas */
-            box-shadow: 0 25px 50px -12px rgba(206, 0, 0, 0.25); /* Sombra avermelhada */
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 25px;
+            box-shadow: 0 25px 50px -12px rgba(206, 0, 0, 0.25);
             border: 1px solid rgba(255,255,255,0.5); 
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
         }
     </style>
 </head>
@@ -152,12 +118,10 @@
     <nav class="navbar-custom">
         <div class="container d-flex justify-content-between align-items-center">
             <img src="brasao.png" class="brasao-img" alt="CBMMA" onerror="this.style.opacity='0'">
-            
-            <div class="brand-text text-center flex-grow-1 px-3">
-                <h5 class="m-0 text-white fw-bold text-uppercase" style="letter-spacing: 1px;">Comando Operacional</h5>
-                <small class="text-white-50 d-block" style="letter-spacing: 0.5px;">Sistema de Escalas Operacionais - CBMMA</small>
+            <div class="text-center flex-grow-1 px-3">
+                <h5 class="m-0 text-white fw-bold text-uppercase">Comando Operacional</h5>
+                <small class="text-white-50 d-block">Sistema de Escalas Operacionais - CBMMA</small>
             </div>
-            
             <img src="brasao_unidade.png" class="brasao-img" alt="Unidade" onerror="this.style.opacity='0'">
         </div>
     </nav>
@@ -175,18 +139,13 @@
                     <label class="form-label small text-muted fw-bold">EMAIL</label>
                     <input type="email" id="email-login" class="form-control" placeholder="ex: 1bbm@cbm.ma.gov.br">
                 </div>
-                
                 <div class="mb-4">
                     <label class="form-label small text-muted fw-bold">SENHA</label>
                     <div class="position-relative">
                         <input type="password" id="senha-login" class="form-control" placeholder="••••••••" style="padding-right: 40px;">
-                        <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted" 
-                           id="icone-senha" 
-                           onclick="toggleSenha()" 
-                           style="cursor: pointer; font-size: 1.2rem;"></i>
+                        <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted" id="icone-senha" onclick="toggleSenha()" style="cursor: pointer; font-size: 1.2rem;"></i>
                     </div>
                 </div>
-
                 <button onclick="fazerLogin()" class="btn btn-custom btn-primary-cbm w-100 mb-3">Entrar no Sistema</button>
                 <div class="text-center">
                     <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small text-secondary fw-bold">Cadastrar Nova Unidade</a>
@@ -207,38 +166,42 @@
                     <input type="password" id="senha-cadastro" class="form-control">
                 </div>
                 <button onclick="fazerCadastro()" class="btn btn-custom btn-primary-cbm w-100 mb-3">Finalizar Cadastro</button>
-                <div class="text-center">
-                    <a href="#" onclick="alternarTela('login')" class="text-decoration-none small text-secondary">← Voltar para Login</a>
-                </div>
+                <div class="text-center"><a href="#" onclick="alternarTela('login')" class="text-decoration-none small text-secondary">← Voltar para Login</a></div>
             </div>
             <p id="msg-erro" class="text-danger text-center mt-3 small fw-bold mb-0"></p>
         </div>
 
         <div id="dashboard-screen" style="display: none;">
-            
             <div class="d-flex justify-content-between align-items-end mb-5 fade-in border-bottom pb-3">
                 <div>
                     <h6 class="text-muted small text-uppercase fw-bold m-0 mb-1">Bem-vindo,</h6>
                     <h2 id="titulo-unidade" class="fw-bold m-0">...</h2>
                 </div>
-                <button onclick="sair()" class="btn btn-sm btn-outline-danger px-3 rounded-pill mb-2 fw-bold">
-                    <i class="bi bi-box-arrow-right"></i> SAIR
-                </button>
+                <button onclick="sair()" class="btn btn-sm btn-outline-danger px-3 rounded-pill mb-2 fw-bold"><i class="bi bi-box-arrow-right"></i> SAIR</button>
             </div>
 
             <div id="admin-area" style="display: none;">
-                
                 <div class="glass-card p-4 mb-4 fade-in delay-1 border-start border-5 border-danger">
                     <div class="d-flex align-items-center gap-2 mb-3">
                         <i class="bi bi-flag-fill text-danger fs-5"></i>
                         <h6 class="text-danger fw-bold m-0">DADOS DA OPERAÇÃO</h6>
                     </div>
                     <div class="row g-3">
-                        <div class="col-md-8">
-                            <input type="text" id="nome-evento" placeholder="Nome do Evento (Ex: Operação Semana Santa)" class="form-control form-control-lg">
+                        <div class="col-md-5">
+                            <label class="small fw-bold text-muted">NOME DO EVENTO</label>
+                            <input type="text" id="nome-evento" placeholder="Ex: Operação Semana Santa" class="form-control">
                         </div>
-                        <div class="col-md-4">
-                            <input type="date" id="data-evento" class="form-control form-control-lg">
+                        <div class="col-md-3">
+                            <label class="small fw-bold text-muted">DATA</label>
+                            <input type="date" id="data-evento" class="form-control">
+                        </div>
+                         <div class="col-md-2">
+                            <label class="small fw-bold text-muted">HORÁRIO</label>
+                            <input type="text" id="horario-evento" placeholder="Ex: 18h às 02h" class="form-control">
+                        </div>
+                         <div class="col-md-2">
+                            <label class="small fw-bold text-muted">PRAZO RESP.</label>
+                            <input type="date" id="prazo-evento" class="form-control">
                         </div>
                     </div>
                 </div>
@@ -247,14 +210,10 @@
                     <div class="col-lg-5">
                         <div class="glass-card p-4 h-100 fade-in delay-2">
                             <h6 class="fw-bold mb-4 text-dark"><i class="bi bi-sliders"></i> Configurar Efetivo</h6>
-                            
                             <div class="mb-3">
-                                <label class="small fw-bold text-muted mb-1">UNIDADE SOLICITADA</label>
-                                <select id="select-unidade" class="form-select">
-                                    <option value="" selected>Carregando...</option>
-                                </select>
+                                <label class="small fw-bold text-muted mb-1">UNIDADE</label>
+                                <select id="select-unidade" class="form-select"><option value="">Carregando...</option></select>
                             </div>
-
                             <div class="mb-3">
                                 <label class="small fw-bold text-muted mb-1">FUNÇÃO</label>
                                 <select id="select-funcao" class="form-select">
@@ -275,59 +234,33 @@
                                     <option value="MICRO - ÔNIBUS">MICRO - ÔNIBUS</option>
                                 </select>
                             </div>
-
                             <div class="row g-2 mb-4">
-                                <div class="col-6">
-                                    <label class="small fw-bold text-muted mb-1">OFICIAIS</label>
-                                    <input type="number" id="input-oficiais" class="form-control text-center fw-bold" value="0" min="0">
-                                </div>
-                                <div class="col-6">
-                                    <label class="small fw-bold text-muted mb-1">PRAÇAS</label>
-                                    <input type="number" id="input-pracas" class="form-control text-center fw-bold" value="0" min="0">
-                                </div>
+                                <div class="col-6"><label class="small fw-bold text-muted mb-1">OFICIAIS</label><input type="number" id="input-oficiais" class="form-control text-center fw-bold" value="0" min="0"></div>
+                                <div class="col-6"><label class="small fw-bold text-muted mb-1">PRAÇAS</label><input type="number" id="input-pracas" class="form-control text-center fw-bold" value="0" min="0"></div>
                             </div>
-
-                            <button onclick="adicionarOrdem()" class="btn btn-outline-danger w-100 fw-bold py-3 rounded-3 dashed-border">
-                                <i class="bi bi-plus-lg"></i> ADICIONAR AO PEDIDO
-                            </button>
+                            <button onclick="adicionarOrdem()" class="btn btn-outline-danger w-100 fw-bold py-3 rounded-3 dashed-border"><i class="bi bi-plus-lg"></i> ADICIONAR</button>
                         </div>
                     </div>
-
                     <div class="col-lg-7">
                         <div class="glass-card p-4 h-100 fade-in delay-3 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="fw-bold m-0"><i class="bi bi-list-check"></i> Ordens Preparadas</h6>
+                                <h6 class="fw-bold m-0">Ordens Preparadas</h6>
                                 <span class="badge bg-light text-dark border" id="contador-ordens">0 itens</span>
                             </div>
-                            
                             <div class="order-list-container mb-3">
                                 <div class="table-responsive" style="max-height: 300px;">
-                                    <table class="table table-custom table-hover mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th class="ps-3">Unidade</th>
-                                                <th>Função</th>
-                                                <th>Efetivo</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tabela-ordens-body"></tbody>
-                                    </table>
-                                </div>
+                                    <tbody id="tabela-ordens-body"></tbody>
+                                </table>
                             </div>
-
                             <div class="d-flex gap-2">
-                                <button onclick="limparOrdens()" class="btn btn-light text-muted w-auto" style="min-width: 100px;">Limpar</button>
-                                <button onclick="dispararSolicitacao()" class="btn btn-custom btn-primary-cbm w-100">
-                                    <i class="bi bi-send-fill me-2"></i> ENVIAR SOLICITAÇÕES
-                                </button>
+                                <button onclick="limparOrdens()" class="btn btn-light text-muted w-auto">Limpar</button>
+                                <button onclick="dispararSolicitacao()" class="btn btn-custom btn-primary-cbm w-100"><i class="bi bi-send-fill me-2"></i> ENVIAR SOLICITAÇÕES</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                
                 <div class="glass-card p-4 mt-4 fade-in delay-3">
-                     <h6 class="fw-bold mb-3 text-secondary">HISTÓRICO DE MISSÕES</h6>
+                     <h6 class="fw-bold mb-3 text-secondary">HISTÓRICO / GERENCIAMENTO</h6>
                      <div id="lista-eventos-admin" class="list-group list-group-flush rounded-3"></div>
                 </div>
             </div>
@@ -335,50 +268,24 @@
             <div id="unidade-area" style="display: none;">
                 <div class="alert alert-warning d-flex align-items-center shadow-sm rounded-3 fade-in mb-5">
                     <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-warning"></i>
-                    <div>
-                        <strong class="d-block text-dark">Atenção Escalante:</strong>
-                        <span class="small">Cumpra rigorosamente as cotas de Oficiais e Praças solicitadas pelo Comando Operacional.</span>
-                    </div>
+                    <div><strong class="d-block text-dark">Atenção Escalante:</strong><span class="small">Preencha corretamente os dados. O Nome de Guerra sairá em negrito automaticamente.</span></div>
                 </div>
-                
-                <div class="d-flex align-items-center mb-4 mt-3">
-                    <i class="bi bi-clipboard-data fs-4 me-2 text-primary"></i>
-                    <h5 class="fw-bold m-0">Minhas Pendências</h5>
-                </div>
+                <h5 class="fw-bold m-0 mb-4">Minhas Pendências</h5>
                 <div id="lista-unidade" class="row g-4 fade-in delay-1"></div>
                 
                 <div id="form-militar" style="display:none;" class="glass-card p-4 mt-5 border-top border-5 border-primary shadow-lg position-relative">
                     <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-3"></button>
-                    
                     <div class="mb-4">
                         <span class="badge bg-primary mb-2">Preenchendo Escala</span>
                         <h4 class="text-dark fw-bold mb-1" id="titulo-evento-form">...</h4>
-                        <small class="text-muted">Informe os militares escalados para esta missão.</small>
+                        <small class="text-muted" id="subtitulo-form">...</small>
                     </div>
 
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="bg-white p-3 rounded-4 border flex-fill text-center shadow-sm">
-                            <small class="d-block text-muted fw-bold fw-bold" style="font-size: 0.7rem;">META OFICIAIS</small>
-                            <span id="meta-oficiais" class="fs-3 fw-bold text-primary">0</span>
+                    <div id="container-inputs-militares" class="mb-4">
                         </div>
-                        <div class="bg-white p-3 rounded-4 border flex-fill text-center shadow-sm">
-                            <small class="d-block text-muted fw-bold fw-bold" style="font-size: 0.7rem;">META PRAÇAS</small>
-                            <span id="meta-pracas" class="fs-3 fw-bold text-primary">0</span>
-                        </div>
-                        <div class="bg-white p-3 rounded-4 border flex-fill text-center shadow-sm d-flex flex-column justify-content-center">
-                            <small class="d-block text-muted fw-bold fw-bold" style="font-size: 0.7rem;">FUNÇÃO</small>
-                            <span id="meta-funcao" class="fw-bold text-dark text-uppercase small">...</span>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="small fw-bold text-dark mb-2"><i class="bi bi-people-fill me-1"></i> LISTA DE NOMES (Posto Nome - Telefone)</label>
-                        <textarea id="lista-nomes" class="form-control font-monospace p-3" rows="8" placeholder="Exemplo de preenchimento:&#10;CB BBM SILVA - 98 98888-8888&#10;SD BBM SOUZA - 98 99999-9999" style="border-radius: 15px;"></textarea>
-                        <small class="text-muted mt-1 d-block ps-2">* Adicione um militar por linha.</small>
-                    </div>
                     
                     <button onclick="salvarEscala()" class="btn btn-custom btn-primary-cbm w-100 py-3 fs-6">
-                        <i class="bi bi-check-circle-fill me-2"></i> ENVIAR ESCALA PREENCHIDA
+                        <i class="bi bi-check-circle-fill me-2"></i> ENVIAR E GERAR RECIBO
                     </button>
                 </div>
             </div>
@@ -386,75 +293,53 @@
     </div>
 
     <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3">
-        <div class="preview-content p-4 w-100 fade-in" style="max-width: 850px;">
+        <div class="preview-content p-4 w-100 fade-in" style="max-width: 900px;">
             <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
                 <div>
-                    <small class="text-uppercase text-muted fw-bold" style="letter-spacing: 1px;">Detalhes da Operação</small>
                     <h4 class="fw-bold m-0 text-danger mt-1" id="preview-titulo">...</h4>
-                    <div class="mt-2 d-flex align-items-center text-muted">
-                        <i class="bi bi-calendar-week-fill me-2"></i>
-                        <span id="preview-data" class="fw-bold">...</span>
+                    <div class="mt-2 text-muted small">
+                        <span id="preview-data" class="fw-bold">...</span> | <span id="preview-horario">...</span>
                     </div>
                 </div>
                 <button onclick="fecharPreview()" class="btn-close bg-light p-2 rounded-circle shadow-sm"></button>
             </div>
             
-            <div class="table-responsive mb-4 rounded-3 shadow-sm bg-white" style="border: 1px solid #eee;">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light" style="border-bottom: 2px solid #eee;">
+            <div class="table-responsive mb-4 rounded-3 shadow-sm bg-white" style="border: 1px solid #eee; max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0 table-sm">
+                    <thead class="bg-light sticky-top">
                         <tr>
-                            <th class="ps-4 py-3 text-secondary text-uppercase small">Unidade</th>
-                            <th class="py-3 text-secondary text-uppercase small">Função</th>
-                            <th class="py-3 text-secondary text-uppercase small text-center">Status</th>
-                            <th class="pe-4 py-3 text-secondary text-uppercase small text-center">Efetivo</th>
+                            <th class="ps-3">Ord</th>
+                            <th>Posto</th>
+                            <th>Nome Completo / Guerra</th>
+                            <th>Contato</th>
+                            <th>Unidade</th>
+                            <th>Função</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-preview-corpo" class="bg-white"></tbody>
                 </table>
             </div>
-            
-            <div class="d-flex justify-content-end font-monospace small text-muted mb-3 pe-2">
-                *O arquivo Excel contém apenas as unidades que já responderam.
-            </div>
-
-            <button onclick="baixarExcelDoEvento()" class="btn btn-success fw-bold w-100 py-3 rounded-4 shadow-sm hover-scale d-flex justify-content-center align-items-center gap-2" style="letter-spacing: 0.5px;">
-                <i class="bi bi-file-earmark-spreadsheet-fill fs-5"></i> BAIXAR RELATÓRIO EM EXCEL (.XLSX)
-            </button>
+            <button onclick="baixarExcelDoEvento()" class="btn btn-success fw-bold w-100 py-3 rounded-4 shadow-sm"><i class="bi bi-file-earmark-spreadsheet-fill fs-5"></i> BAIXAR RELATÓRIO EXCEL (LAYOUT AMARELO)</button>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
     <script>
         window.alternarTela = (t) => {
-            const login = document.getElementById('login-form');
-            const cadastro = document.getElementById('cadastro-form');
+            const login = document.getElementById('login-form'); const cadastro = document.getElementById('cadastro-form');
             if (t === 'login') { login.style.display = 'block'; cadastro.style.display = 'none'; } 
             else { login.style.display = 'none'; cadastro.style.display = 'block'; }
             document.getElementById('msg-erro').innerText = "";
         };
-
         window.toggleSenha = () => {
-            const input = document.getElementById('senha-login');
-            const icone = document.getElementById('icone-senha');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icone.classList.remove('bi-eye-slash-fill');
-                icone.classList.add('bi-eye-fill');
-                icone.classList.remove('text-muted');
-                icone.classList.add('text-primary');
-            } else {
-                input.type = 'password';
-                icone.classList.remove('bi-eye-fill');
-                icone.classList.add('bi-eye-slash-fill');
-                icone.classList.remove('text-primary');
-                icone.classList.add('text-muted');
-            }
+            const input = document.getElementById('senha-login'); const icone = document.getElementById('icone-senha');
+            if (input.type === 'password') { input.type = 'text'; icone.classList.replace('bi-eye-slash-fill', 'bi-eye-fill'); icone.classList.add('text-primary'); } 
+            else { input.type = 'password'; icone.classList.replace('bi-eye-fill', 'bi-eye-slash-fill'); icone.classList.remove('text-primary'); }
         };
-
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
-
-        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'excluirOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
+        
+        const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'excluirOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento', 'excluirEvento'];
         funcoes.forEach(f => window[f] = (...args) => window.app[f] && window.app[f](...args));
     </script>
 </body>
