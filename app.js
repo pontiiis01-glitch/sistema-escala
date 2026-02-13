@@ -1,7 +1,6 @@
 import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc } from './firebase-config.js';
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
-// jsPDF já carregado via CDN no HTML globalmente como window.jspdf
 
 let usuarioAtual = null;
 let perfilAtual = null;
@@ -83,17 +82,17 @@ export function adicionarOrdem() {
 
 function atualizarTabelaOrdens() {
     const corpo = document.getElementById('tabela-ordens-body');
-    document.getElementById('contador-ordens').innerText = `${listaOrdensTemporaria.length} itens`;
+    document.getElementById('contador-ordens').innerText = `${listaOrdensTemporaria.length}`;
     corpo.innerHTML = "";
     if (listaOrdensTemporaria.length === 0) return;
 
     listaOrdensTemporaria.forEach((item, index) => {
         corpo.innerHTML += `
             <tr class="border-bottom">
-                <td class="ps-3 fw-bold">${item.unidade}</td>
-                <td><small>${item.funcao}</small></td>
-                <td class="small fw-bold">${item.oficiais} Of / ${item.pracas} Pç</td>
-                <td class="text-end pe-3"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger"><i class="bi bi-x-circle-fill"></i></button></td>
+                <td class="ps-2 fw-bold">${item.unidade}</td>
+                <td><span class="badge bg-light text-dark border">${item.funcao}</span></td>
+                <td class="small fw-bold text-muted">${item.oficiais} OF / ${item.pracas} PÇ</td>
+                <td class="text-end pe-2"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger"><i class="bi bi-x"></i></button></td>
             </tr>`;
     });
 }
@@ -118,7 +117,7 @@ export async function dispararSolicitacao() {
                 funcao: ordem.funcao,
                 cota: { oficial: ordem.oficiais, praca: ordem.pracas },
                 status: "Pendente",
-                militares: "[]", // Inicializa como array vazio stringificado
+                militares: "[]",
                 criadoEm: new Date()
             });
         });
@@ -158,10 +157,10 @@ async function carregarEventosAdmin() {
                             <strong class="text-dark d-block">${info.evento}</strong>
                             <small class="text-muted">${dataBr} - ${info.horario || ''}</small>
                         </div>
-                        <button onclick="window.app.excluirEvento('${info.evento}', '${info.data}')" class="btn btn-sm btn-outline-danger" title="Apagar todo histórico deste evento"><i class="bi bi-trash"></i></button>
+                        <button onclick="window.app.excluirEvento('${info.evento}', '${info.data}')" class="btn btn-sm btn-outline-danger" title="Apagar Evento"><i class="bi bi-trash"></i></button>
                     </div>
                     <div class="d-flex justify-content-between small text-muted align-items-center mb-1">
-                        <span onclick="window.app.abrirPreview('${info.evento}', '${info.data}')" style="cursor:pointer" class="text-primary fw-bold"> <i class="bi bi-eye"></i> Ver Detalhes</span>
+                        <span onclick="window.app.abrirPreview('${info.evento}', '${info.data}')" style="cursor:pointer" class="text-primary fw-bold"> <i class="bi bi-eye"></i> Ver Escala</span>
                         <span>${info.respondidos}/${info.total} (${percentual}%)</span>
                     </div>
                     <div class="progress" style="height: 4px;"><div class="progress-bar bg-${cor}" style="width: ${percentual}%"></div></div>
@@ -171,13 +170,13 @@ async function carregarEventosAdmin() {
 }
 
 export async function excluirEvento(evento, data) {
-    if(!confirm(`Tem certeza que deseja EXCLUIR TODAS as solicitações de "${evento}"? Isso não pode ser desfeito.`)) return;
+    if(!confirm(`Tem certeza que deseja EXCLUIR TODAS as solicitações de "${evento}"?`)) return;
     try {
         const q = query(collection(db, "escalas"), where("evento", "==", evento), where("data", "==", data));
         const snap = await getDocs(q);
         const batch = [];
-        snap.forEach(doc => deleteDoc(doc.ref)); // Delete um por um (simples)
-        alert("Evento excluído do histórico.");
+        snap.forEach(doc => deleteDoc(doc.ref)); 
+        alert("Evento excluído.");
         carregarEventosAdmin();
     } catch(e) { alert("Erro ao excluir: " + e.message); }
 }
@@ -205,7 +204,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
 
-            // Se ninguem respondeu ainda, mostra a pendencia
             if(d.status === "Pendente") {
                 html += `<tr class="table-danger text-muted"><td colspan="6" class="text-center small">Unidade ${d.unidade} ainda não enviou (Cota: ${d.cota.oficial} Of / ${d.cota.praca} Pç)</td></tr>`;
             } else {
@@ -233,34 +231,30 @@ export async function baixarExcelDoEvento() {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Escala');
         
-        // Dados do evento para o cabeçalho
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
         let horarioEvento = "";
         if(!snapshot.empty) horarioEvento = snapshot.docs[0].data().horario || "";
 
-        // 1. Cabeçalho Amarelo Mesclado
         const dataFormatada = new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone: 'UTC', weekday: 'long', day: '2-digit', month: '2-digit'}).toUpperCase();
         const tituloCompleto = `${dataFormatada} - ${eventoPreviewAtual.nome} / ${horarioEvento}`;
         
         worksheet.mergeCells('A1:F1');
         const titleCell = worksheet.getCell('A1');
         titleCell.value = tituloCompleto;
-        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Amarelo
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; 
         titleCell.font = { bold: true, size: 12, name: 'Arial' };
         titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
         titleCell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 
-        // 2. Cabeçalho das Colunas (Cinza)
         const headerRow = worksheet.addRow(['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO']);
         headerRow.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } }; // Cinza
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFBFBF' } }; 
             cell.font = { bold: true, name: 'Arial', size: 10 };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         });
 
-        // 3. Dados
         let contador = 1;
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
@@ -276,20 +270,13 @@ export async function baixarExcelDoEvento() {
                 };
 
                 const row = worksheet.addRow([
-                    contador++, 
-                    m.posto, 
-                    nomeFormatado, 
-                    m.contato, 
-                    d.unidade, 
-                    d.funcao.toUpperCase()
+                    contador++, m.posto, nomeFormatado, m.contato, d.unidade, d.funcao.toUpperCase()
                 ]);
 
                 row.eachCell((cell, colNum) => {
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                    // Coluna Nome à esquerda
                     if(colNum === 3) cell.alignment = { horizontal: 'left', indent: 1 };
-                    // Coluna Função Amarela igual ao print (ou azul se preferir, pus amarelo pra bater com layout)
                     if(colNum === 6) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; 
                         cell.font = { name: 'Arial', size: 9 };
@@ -298,7 +285,6 @@ export async function baixarExcelDoEvento() {
             });
         });
 
-        // Largura das colunas
         worksheet.getColumn(1).width = 6;
         worksheet.getColumn(2).width = 15;
         worksheet.getColumn(3).width = 45;
@@ -311,7 +297,7 @@ export async function baixarExcelDoEvento() {
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
-// ================= UNIDADE: INPUTS E SALVAMENTO =================
+// ================= UNIDADE =================
 async function carregarPendenciasUnidade() {
     const lista = document.getElementById('lista-unidade');
     lista.innerHTML = "<div class='text-center w-100'>Carregando...</div>";
@@ -328,12 +314,11 @@ async function carregarPendenciasUnidade() {
             const isPendente = d.status === "Pendente";
             const btnClass = isPendente ? "btn-outline-danger" : "btn-outline-success";
             
-            // Verifica prazo
             let textoPrazo = "";
             if(d.prazo) {
                 const prazoDate = new Date(d.prazo);
                 const hoje = new Date();
-                if (hoje > prazoDate && isPendente) textoPrazo = `<div class="text-danger fw-bold small mt-1"><i class="bi bi-alarm"></i> Prazo Vencido: ${prazoDate.toLocaleDateString()}</div>`;
+                if (hoje > prazoDate && isPendente) textoPrazo = `<div class="text-danger fw-bold small mt-1"><i class="bi bi-alarm"></i> Vencido: ${prazoDate.toLocaleDateString()}</div>`;
                 else textoPrazo = `<div class="text-muted small mt-1">Prazo: ${prazoDate.toLocaleDateString()}</div>`;
             }
 
@@ -370,27 +355,19 @@ export async function abrirEdicao(id) {
     document.getElementById('titulo-evento-form').innerText = d.evento;
     document.getElementById('subtitulo-form').innerText = `${d.funcao} | Meta: ${d.cota.oficial} Oficiais, ${d.cota.praca} Praças`;
     
-    // Gera as caixinhas (Inputs Dinâmicos)
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
 
-    // Tenta carregar dados salvos
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
 
     let contadorGlobal = 0;
-
-    // Gera inputs para OFICIAIS
     for(let i=0; i < parseInt(d.cota.oficial); i++) {
-        const salvo = dadosSalvos[contadorGlobal] || {};
-        container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', salvo);
+        container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contadorGlobal] || {});
         contadorGlobal++;
     }
-
-    // Gera inputs para PRAÇAS
     for(let i=0; i < parseInt(d.cota.praca); i++) {
-        const salvo = dadosSalvos[contadorGlobal] || {};
-        container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', salvo);
+        container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contadorGlobal] || {});
         contadorGlobal++;
     }
 
@@ -401,8 +378,8 @@ export async function abrirEdicao(id) {
 function gerarHtmlMilitar(index, tipo, dados) {
     return `
     <div class="input-militar-group">
-        <h6 class="text-danger fw-bold mb-3 small border-bottom pb-2">${tipo} #${index + 1}</h6>
-        <div class="row g-2 militar-row">
+        <div class="militar-badge">${tipo} ${index + 1}</div>
+        <div class="row g-2 militar-row mt-2">
             <div class="col-4 col-md-3">
                 <input type="text" class="form-control campo-posto" placeholder="Posto/Grad" value="${dados.posto || ''}">
             </div>
@@ -433,21 +410,15 @@ export async function salvarEscala() {
         const contato = row.querySelector('.campo-tel').value.trim();
 
         if(!posto || !nome || !guerra) preenchidoCorretamente = false;
-
         listaFinal.push({ posto, nome, guerra, contato });
     });
 
-    if(!preenchidoCorretamente) return alert("Por favor, preencha Posto, Nome e Nome de Guerra de todos os militares.");
+    if(!preenchidoCorretamente) return alert("Por favor, preencha Posto, Nome e Nome de Guerra de todos.");
 
     try {
         const jsonString = JSON.stringify(listaFinal);
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { militares: jsonString, status: "Preenchido" });
-        
-        // Gera o Recibo em PDF
-        if(confirm("Escala enviada! Deseja baixar o comprovante (Recibo)?")) {
-            gerarReciboPDF(listaFinal);
-        }
-
+        if(confirm("Enviado! Baixar Recibo?")) gerarReciboPDF(listaFinal);
         document.getElementById('form-militar').style.display = 'none';
         carregarPendenciasUnidade();
     } catch (e) { alert("Erro: " + e.message); }
@@ -463,18 +434,18 @@ function gerarReciboPDF(lista) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Unidade: ${perfilAtual.unidade}`, 20, 30);
-    doc.text(`Data do Envio: ${new Date().toLocaleString()}`, 20, 35);
+    doc.text(`Data: ${new Date().toLocaleString()}`, 20, 35);
     
     let y = 50;
     doc.setFontSize(9);
-    doc.text("MILITARES ESCALADOS:", 20, 45);
+    doc.text("EFETIVO LANÇADO:", 20, 45);
     
     lista.forEach((m, i) => {
-        doc.text(`${i+1}. ${m.posto} ${m.guerra} (${m.nome}) - Tel: ${m.contato}`, 20, y);
+        doc.text(`${i+1}. ${m.posto} ${m.guerra} (${m.nome}) - ${m.contato}`, 20, y);
         y += 7;
     });
 
-    doc.save(`Recibo_Escala_${perfilAtual.unidade}.pdf`);
+    doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
 window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, salvarEscala, abrirPreview, abrirEdicao, baixarExcelDoEvento, excluirEvento };

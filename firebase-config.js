@@ -1,9 +1,9 @@
 // Importações via CDN (Versão 10.7.1)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// SUAS CHAVES DO PROJETO (JÁ CONFIGURADAS)
+// SUAS CHAVES DO PROJETO
 const firebaseConfig = {
   apiKey: "AIzaSyD09C5yNzXPKD0j009yk-1XPRKZePoQW-o",
   authDomain: "escala-unificada.firebaseapp.com",
@@ -19,9 +19,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Exporta as ferramentas para os outros arquivos usarem
+// Exporta as ferramentas
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
-    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy 
+    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc 
 };
