@@ -3,300 +3,426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COMANDO OPERACIONAL METROPOLITANO - CBMMA</title>
+    <title>S.G.E - Comando Operacional Metropolitano</title>
     <link rel="icon" type="image/png" href="brasao.png">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         :root {
-            --primary-red: #b30000;
-            --dark-red: #800000;
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --app-bg: #f0f2f5;
+            /* Identidade CBMMA & Tática */
+            --cbm-red: #990000;       /* Vermelho Sangue Escuro */
+            --cbm-gold: #FFD700;      /* Dourado Militar */
+            --tactical-black: #121212;
+            --tactical-gray: #1e1e1e;
+            --panel-white: #ffffff;
+            --bg-app: #f2f4f7;
         }
 
         body {
-            background-color: var(--app-bg);
+            background-color: var(--bg-app);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* --- CABEÇALHO --- */
-        .imposing-header {
-            background: linear-gradient(135deg, var(--dark-red) 10%, var(--primary-red) 100%);
-            padding: 2.5rem 1rem 5rem 1rem;
-            text-align: center;
-            color: white;
+        /* --- CABEÇALHO ROBUSTO --- */
+        .header-tactical {
+            background: linear-gradient(180deg, var(--tactical-black) 0%, var(--cbm-red) 120%);
+            padding: 3rem 1rem 6rem 1rem; /* Espaço extra embaixo para o overlap */
             position: relative;
-            border-bottom-left-radius: 40px;
-            border-bottom-right-radius: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 1;
+            text-align: center;
+            border-bottom: 5px solid var(--cbm-gold);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .logos-container {
+        .header-overlay-pattern {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(var(--tactical-gray) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+        }
+
+        /* Logos e Brasão Central */
+        .brasao-container {
+            position: relative;
+            z-index: 2;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 30px;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
-        .brasao-cbm { height: 80px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
-        .brasao-unidade { height: 100px; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4)); transform: scale(1.1); }
+        .brasao-central {
+            width: 160px;
+            height: 160px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3)); /* Brilho dourado sutil */
+            transition: transform 0.3s ease;
+        }
         
-        .hero-title {
+        .brasao-central:hover { transform: scale(1.05); }
+
+        .system-title {
+            color: white;
             font-weight: 900;
-            font-size: 2rem;
             text-transform: uppercase;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+            font-size: 1.8rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            position: relative; z-index: 2;
+        }
+
+        .system-subtitle {
+            color: var(--cbm-gold);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            position: relative; z-index: 2;
+        }
+
+        /* --- LOGIN CARD --- */
+        .main-container {
+            margin-top: -60px; /* Sobe para ficar por cima do header */
+            position: relative;
+            z-index: 10;
+            padding-bottom: 3rem;
+        }
+
+        .card-glass {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border-top: 4px solid var(--cbm-red);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        /* --- DASHBOARD: ÁREA DA UNIDADE --- */
+        .welcome-bar {
+            background: var(--tactical-black);
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+            color: white;
+            border-radius: 12px;
+            border-left: 6px solid var(--cbm-gold);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .welcome-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            font-weight: 600;
+        }
+
+        #titulo-unidade {
+            color: var(--cbm-gold);
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 1.8rem;
             margin: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* --- UI ELEMENTS --- */
-        .login-overlap-container { margin-top: -40px; position: relative; z-index: 10; }
-        .glass-card {
-            background: var(--glass-bg);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-            max-width: 450px;
-            margin: 0 auto;
+        /* --- BOTÕES E INPUTS --- */
+        .btn-tactical {
+            background-color: var(--cbm-red);
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            transition: all 0.2s;
         }
+        .btn-tactical:hover { background-color: #cc0000; transform: translateY(-2px); color: white;}
 
-        .dashboard-container { padding-top: 2rem; padding-bottom: 4rem; flex: 1; }
-        .dashboard-welcome-bar {
-            background: white; padding: 1.5rem 2rem; border-radius: 16px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-            display: flex; justify-content: space-between; align-items: center;
-            border-left: 5px solid var(--primary-red);
+        .btn-outline-gold {
+            border: 2px solid var(--cbm-gold);
+            color: var(--cbm-gold);
+            font-weight: 700;
         }
+        .btn-outline-gold:hover { background: var(--cbm-gold); color: black; }
 
         .form-label-custom {
-            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #6c757d; margin-bottom: 4px;
+            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #555; margin-bottom: 5px; letter-spacing: 0.5px;
         }
-        .form-control, .form-select { border-radius: 8px; padding: 8px 12px; border: 1px solid #ced4da; font-size: 0.95rem; }
-        .form-control:focus, .form-select:focus { border-color: var(--primary-red); box-shadow: 0 0 0 3px rgba(179,0,0,0.1); }
-
-        .btn-imposing {
-            background: var(--primary-red); color: white; border: none; transition: all 0.2s;
+        .form-control, .form-select {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 10px;
+            font-weight: 600;
+            color: var(--tactical-black);
         }
-        .btn-imposing:hover { background: var(--dark-red); color: white; transform: translateY(-2px); }
+        .form-control:focus {
+            border-color: var(--cbm-red);
+            box-shadow: 0 0 0 3px rgba(153, 0, 0, 0.1);
+        }
 
-        .animate-in { animation: fadeUp 0.5s ease-out forwards; opacity: 0; transform: translateY(15px); }
-        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+        /* --- CARDS DE MISSÃO --- */
+        .mission-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            overflow: hidden;
+            background: white;
+            height: 100%;
+        }
+        .mission-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        
+        .mission-header {
+            background: var(--tactical-gray);
+            color: white;
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
 
-        /* Estilo para Tabela de Recibo no Modal */
-        .recibo-preview-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .recibo-preview-table th { background: #f8f9fa; text-transform: uppercase; padding: 8px; border: 1px solid #dee2e6; }
-        .recibo-preview-table td { padding: 8px; border: 1px solid #dee2e6; }
+        /* Animações */
+        .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
     </style>
 </head>
 <body>
 
-    <header class="imposing-header">
-        <div class="container animate-in">
-            <div class="logos-container">
-                <img src="brasao.png" class="brasao-cbm" alt="CBMMA">
-                <img src="brasao-unidade.png" class="brasao-unidade" alt="Unidade">
+    <header class="header-tactical">
+        <div class="header-overlay-pattern"></div>
+        <div class="container">
+            <div class="brasao-container animate-up">
+                <img src="brasao_unidade.png" class="brasao-central" alt="Brasão Unidade">
             </div>
-            <h1 class="hero-title">Comando Operacional Metropolitano</h1>
-            <p class="small text-white-50 text-uppercase fw-bold letter-spacing-2">Sistema de Gestão de Escalas</p>
+            
+            <div class="text-content animate-up" style="animation-delay: 0.1s;">
+                <h1 class="system-title">Comando Operacional Metropolitano</h1>
+                <p class="system-subtitle">Sistema Integrado de Escalas - CBMMA</p>
+            </div>
         </div>
     </header>
 
-    <div id="login-area-wrapper" class="container login-overlap-container">
-        <div id="auth-container" class="glass-card p-4 p-md-5 animate-in">
-            <div id="login-form">
-                <div class="text-center mb-4">
-                    <h5 class="fw-bold text-dark">ACESSO RESTRITO</h5>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label-custom">E-mail</label>
-                    <input type="email" id="email-login" class="form-control fw-bold" placeholder="usuario@cbm.ma.gov.br">
-                </div>
-                <div class="mb-4">
-                    <label class="form-label-custom">Senha</label>
-                    <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
-                </div>
-                <button onclick="fazerLogin()" class="btn btn-imposing w-100 fw-bold py-3 rounded-3 shadow-sm">ACESSAR SISTEMA</button>
-                <div class="text-center mt-3 pt-3 border-top">
-                    <a href="#" onclick="alternarTela('cadastro')" class="text-danger fw-bold small text-decoration-none">Cadastrar nova unidade</a>
-                </div>
-            </div>
-
-            <div id="cadastro-form" style="display: none;">
-                <div class="text-center mb-3"><h5 class="fw-bold text-danger">NOVA UNIDADE</h5></div>
-                <div class="mb-2"><input type="text" id="unidade-cadastro" class="form-control" placeholder="Nome (Ex: 1º BBM)"></div>
-                <div class="mb-2"><input type="email" id="email-cadastro" class="form-control" placeholder="E-mail"></div>
-                <div class="mb-3"><input type="password" id="senha-cadastro" class="form-control" placeholder="Senha"></div>
-                <button onclick="fazerCadastro()" class="btn btn-imposing w-100 fw-bold py-2">CADASTRAR</button>
-                <div class="text-center mt-2"><a href="#" onclick="alternarTela('login')" class="small text-secondary fw-bold text-decoration-none">Voltar</a></div>
-            </div>
-            <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
-        </div>
-    </div>
-
-    <main id="dashboard-screen" class="container dashboard-container animate-in" style="display: none;">
+    <main class="container main-container">
         
-        <div class="dashboard-welcome-bar mb-5">
-            <div>
-                <small class="text-uppercase text-muted fw-bold ls-1">Painel de Controle</small>
-                <h2 id="titulo-unidade" class="fw-bold m-0 text-dark mt-1">...</h2>
-            </div>
-            <button onclick="sair()" class="btn btn-outline-danger px-4 fw-bold small rounded-pill border-2"><i class="bi bi-box-arrow-right me-2"></i> SAIR</button>
-        </div>
-
-        <div id="admin-area" style="display: none;">
-            <div class="row g-4">
-                <div class="col-lg-5">
-                    <div class="bg-white p-4 rounded-4 shadow-sm border h-100">
-                        <h5 class="text-danger fw-black mb-4 pb-2 border-bottom"><i class="bi bi-calendar-plus-fill me-2"></i>NOVA MISSÃO</h5>
-                        
-                        <div class="p-3 bg-light rounded-3 border mb-3">
-                            <h6 class="text-primary fw-bold small mb-3"><i class="bi bi-info-circle-fill me-1"></i> DADOS DA OPERAÇÃO</h6>
-                            <label class="form-label-custom">Nome do Evento</label>
-                            <input type="text" id="nome-evento" placeholder="Ex: Operação Carnaval" class="form-control mb-2 fw-bold">
-                            
-                            <div class="row g-2 mb-2">
-                                <div class="col-12"><label class="form-label-custom">Data do Evento</label><input type="date" id="data-evento" class="form-control"></div>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-6"><label class="form-label-custom">Hora Início</label><input type="time" id="hora-inicio" class="form-control"></div>
-                                <div class="col-6"><label class="form-label-custom">Hora Final</label><input type="time" id="hora-fim" class="form-control"></div>
-                            </div>
-                        </div>
-
-                        <div class="p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25 mb-4">
-                            <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-stopwatch-fill me-1"></i> PRAZO ESCALANTE</h6>
-                            <div class="row g-2">
-                                <div class="col-7"><label class="form-label-custom text-danger">Data Limite</label><input type="date" id="prazo-data" class="form-control border-danger fw-bold"></div>
-                                <div class="col-5"><label class="form-label-custom text-danger">Hora Limite</label><input type="time" id="prazo-hora" class="form-control border-danger fw-bold"></div>
-                            </div>
-                            <small class="text-muted d-block mt-2 lh-1" style="font-size: 0.7rem;">O sistema bloqueará o envio após este horário.</small>
+        <div id="login-area-wrapper" class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card-glass p-4 animate-up" style="animation-delay: 0.2s;">
+                    <div id="login-form">
+                        <div class="text-center mb-4 border-bottom pb-3">
+                            <h5 class="fw-black text-dark m-0">IDENTIFICAÇÃO</h5>
+                            <small class="text-muted fw-bold" style="font-size: 0.7rem;">ACESSO RESTRITO AO COMANDO</small>
                         </div>
                         
-                        <hr class="opacity-25 my-4">
+                        <div class="mb-3">
+                            <label class="form-label-custom">Email Oficial</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope-fill text-muted"></i></span>
+                                <input type="email" id="email-login" class="form-control border-start-0 ps-0" placeholder="unidade@cbm.ma.gov.br">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label-custom">Senha</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                                <input type="password" id="senha-login" class="form-control border-start-0 ps-0" placeholder="••••••••">
+                            </div>
+                        </div>
                         
-                        <label class="form-label-custom">Unidade Solicitada</label>
-                        <select id="select-unidade" class="form-select mb-2 fw-bold text-secondary"><option>Carregando...</option></select>
-                        <label class="form-label-custom">Função</label>
-                        <select id="select-funcao" class="form-select mb-2">
-                            <option value="SOCORRISTA">SOCORRISTA</option>
-                            <option value="MOTORISTA (AR/ABT)">MOTORISTA (AR/ABT)</option>
-                            <option value="COORD. DO EVENTO">COORD. DO EVENTO</option>
-                            <option value="SUBCOORD. DO EVENTO">SUBCOORD. DO EVENTO</option>
-                            <option value="OF. DE LOGÍSTICA">OF. DE LOGÍSTICA</option>
-                            <option value="AUX. DE LOGÍSTICA">AUX. DE LOGÍSTICA</option>
-                            <option value="OF DE OPERAÇÕES">OF DE OPERAÇÕES</option>
-                            <option value="OF. DE ADM/FINANÇAS">OF. DE ADM/FINANÇAS</option>
-                            <option value="AUX. DE ADM/FINANÇAS">AUX. DE ADM/FINANÇAS</option>
-                            <option value="OPER. DRONE">OPER. DRONE</option>
-                            <option value="OF. DE INFORMAÇÃO">OF. DE INFORMAÇÃO</option>
-                            <option value="MOP 1 (MOTO)">MOP 1 (MOTO)</option>
-                            <option value="MOP 2 (MOTO)">MOP 2 (MOTO)</option>
-                            <option value="VAN">VAN</option>
-                            <option value="MICRO - ÔNIBUS">MICRO - ÔNIBUS</option>
-                        </select>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6"><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="Oficiais"></div>
-                            <div class="col-6"><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="Praças"></div>
-                        </div>
-                        <button onclick="adicionarOrdem()" class="btn btn-dark w-100 fw-bold py-2 text-uppercase"><i class="bi bi-plus-lg me-2"></i> Incluir na Lista</button>
-                    </div>
-                </div>
-
-                <div class="col-lg-7">
-                    <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold m-0 text-dark">Rascunho de Ordens</h6>
-                            <span class="badge bg-danger rounded-pill" id="contador-ordens">0</span>
-                        </div>
-                        <div class="bg-light rounded p-2 mb-3 border" style="max-height: 250px; overflow-y: auto;">
-                            <table class="table table-sm table-borderless mb-0 small align-middle"><tbody id="tabela-ordens-body"></tbody></table>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button onclick="limparOrdens()" class="btn btn-light fw-bold text-muted">Limpar</button>
-                            <button onclick="dispararSolicitacao()" class="btn btn-imposing px-4 fw-bold shadow-sm"><i class="bi bi-send-fill me-2"></i> DISPARAR MISSÃO</button>
+                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 py-3 rounded-3 shadow-sm mb-3">
+                            ENTRAR NO SISTEMA
+                        </button>
+                        
+                        <div class="text-center">
+                            <a href="#" onclick="alternarTela('cadastro')" class="text-secondary fw-bold small text-decoration-none" style="font-size: 0.75rem;">SOLICITAR CADASTRO DE UNIDADE</a>
                         </div>
                     </div>
 
-                    <div class="bg-white p-4 rounded-4 shadow-sm border">
-                        <h6 class="fw-bold mb-3 text-secondary text-uppercase ls-1"><i class="bi bi-clock-history me-2"></i>Histórico Recente</h6>
-                        <div id="lista-eventos-admin" class="list-group list-group-flush"></div>
+                    <div id="cadastro-form" style="display: none;">
+                        <div class="text-center mb-3"><h5 class="fw-bold text-danger">NOVA UNIDADE</h5></div>
+                        <div class="mb-2"><label class="form-label-custom">Nome da Unidade</label><input type="text" id="unidade-cadastro" class="form-control" placeholder="Ex: 1º BBM"></div>
+                        <div class="mb-2"><label class="form-label-custom">Email</label><input type="email" id="email-cadastro" class="form-control"></div>
+                        <div class="mb-3"><label class="form-label-custom">Senha</label><input type="password" id="senha-cadastro" class="form-control"></div>
+                        <button onclick="fazerCadastro()" class="btn btn-tactical w-100 py-2">CADASTRAR</button>
+                        <div class="text-center mt-3"><a href="#" onclick="alternarTela('login')" class="small text-muted fw-bold text-decoration-none">← VOLTAR</a></div>
                     </div>
+                    <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
                 </div>
             </div>
         </div>
 
-        <div id="unidade-area" style="display: none;">
-            <h4 class="fw-black mb-4 ps-3 border-start border-danger border-4">Missões Pendentes</h4>
-            <div id="lista-unidade" class="row g-4"></div>
+        <div id="dashboard-screen" class="animate-up" style="display: none; padding-top: 20px;">
             
-            <div id="form-militar" style="display:none;" class="bg-white p-4 mt-5 rounded-4 shadow-lg border position-relative animate-in">
-                <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-4"></button>
-                <div class="text-center mb-4">
-                    <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill">PREENCHIMENTO DE ESCALA</span>
-                    <h3 id="titulo-evento-form" class="fw-black text-dark mb-1">...</h3>
-                    <p id="subtitulo-form" class="text-muted fw-bold fs-5">...</p>
+            <div class="welcome-bar mb-5">
+                <div>
+                    <div class="welcome-label"><i class="bi bi-shield-fill me-1"></i> Unidade Logada</div>
+                    <h2 id="titulo-unidade">...</h2> </div>
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-4 fw-bold rounded-pill text-uppercase border-2">
+                    Sair <i class="bi bi-box-arrow-right ms-2"></i>
+                </button>
+            </div>
+
+            <div id="admin-area" style="display: none;">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="bg-white p-4 rounded-4 shadow-sm border-top border-4 border-danger h-100">
+                            <h5 class="text-dark fw-black mb-4 pb-2 border-bottom"><i class="bi bi-megaphone-fill me-2 text-danger"></i>NOVA ORDEM DE SERVIÇO</h5>
+                            
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <label class="form-label-custom">Evento / Operação</label>
+                                <input type="text" id="nome-evento" placeholder="Ex: OPERAÇÃO CARNAVAL" class="form-control mb-2 fw-bold text-uppercase">
+                                
+                                <div class="row g-2 mb-2">
+                                    <div class="col-12"><label class="form-label-custom">Data</label><input type="date" id="data-evento" class="form-control"></div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6"><label class="form-label-custom">Início</label><input type="time" id="hora-inicio" class="form-control"></div>
+                                    <div class="col-6"><label class="form-label-custom">Término</label><input type="time" id="hora-fim" class="form-control"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25 mb-4">
+                                <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-stopwatch-fill me-1"></i> PRAZO DE RESPOSTA</h6>
+                                <div class="row g-2">
+                                    <div class="col-7"><label class="form-label-custom text-danger">Data Limite</label><input type="date" id="prazo-data" class="form-control border-danger fw-bold text-danger"></div>
+                                    <div class="col-5"><label class="form-label-custom text-danger">Hora</label><input type="time" id="prazo-hora" class="form-control border-danger fw-bold text-danger"></div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <label class="form-label-custom">Unidade Destino</label>
+                            <select id="select-unidade" class="form-select mb-2 fw-bold text-uppercase"><option>Carregando...</option></select>
+                            
+                            <label class="form-label-custom">Função Tática</label>
+                            <select id="select-funcao" class="form-select mb-2 text-uppercase">
+                                <option value="SOCORRISTA">SOCORRISTA</option>
+                                <option value="MOTORISTA (AR/ABT)">MOTORISTA (AR/ABT)</option>
+                                <option value="COORD. DO EVENTO">COORD. DO EVENTO</option>
+                                <option value="SUBCOORD. DO EVENTO">SUBCOORD. DO EVENTO</option>
+                                <option value="OF. DE LOGÍSTICA">OF. DE LOGÍSTICA</option>
+                                <option value="AUX. DE LOGÍSTICA">AUX. DE LOGÍSTICA</option>
+                                <option value="OF DE OPERAÇÕES">OF DE OPERAÇÕES</option>
+                                <option value="OF. DE ADM/FINANÇAS">OF. DE ADM/FINANÇAS</option>
+                                <option value="AUX. DE ADM/FINANÇAS">AUX. DE ADM/FINANÇAS</option>
+                                <option value="OPER. DRONE">OPER. DRONE</option>
+                                <option value="OF. DE INFORMAÇÃO">OF. DE INFORMAÇÃO</option>
+                                <option value="MOP 1 (MOTO)">MOP 1 (MOTO)</option>
+                                <option value="MOP 2 (MOTO)">MOP 2 (MOTO)</option>
+                                <option value="VAN">VAN</option>
+                                <option value="MICRO - ÔNIBUS">MICRO - ÔNIBUS</option>
+                            </select>
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="form-label-custom">Qtd Oficiais</label><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="0"></div>
+                                <div class="col-6"><label class="form-label-custom">Qtd Praças</label><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="0"></div>
+                            </div>
+                            <button onclick="adicionarOrdem()" class="btn btn-dark w-100 fw-bold py-2 text-uppercase"><i class="bi bi-plus-lg me-2"></i> Adicionar à Lista</button>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-black m-0 text-dark text-uppercase">Rascunho de Ordens</h6>
+                                <span class="badge bg-danger rounded-pill" id="contador-ordens">0</span>
+                            </div>
+                            <div class="bg-light rounded p-2 mb-3 border" style="max-height: 250px; overflow-y: auto;">
+                                <table class="table table-sm table-borderless mb-0 small align-middle"><tbody id="tabela-ordens-body"></tbody></table>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button onclick="limparOrdens()" class="btn btn-light fw-bold text-muted text-uppercase">Limpar</button>
+                                <button onclick="dispararSolicitacao()" class="btn btn-tactical px-4 fw-bold shadow-sm"><i class="bi bi-send-fill me-2"></i> DISPARAR ORDENS</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded-4 shadow-sm border">
+                            <h6 class="fw-bold mb-3 text-secondary text-uppercase ls-1"><i class="bi bi-archive-fill me-2"></i>Histórico de Missões</h6>
+                            <div id="lista-eventos-admin" class="list-group list-group-flush"></div>
+                        </div>
+                    </div>
                 </div>
-                <div id="container-inputs-militares" class="mb-4"></div>
-                <div class="row">
-                    <div class="col-md-8 offset-md-2">
-                        <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm fs-5"><i class="bi bi-file-earmark-check me-2"></i> CONFERIR E ENVIAR</button>
+            </div>
+
+            <div id="unidade-area" style="display: none;">
+                <h4 class="fw-black mb-4 text-uppercase"><span class="text-danger">///</span> Missões e Escalas Pendentes</h4>
+                
+                <div id="lista-unidade" class="row g-4"></div>
+                
+                <div id="form-militar" style="display:none;" class="bg-white p-4 mt-5 rounded-4 shadow-lg border border-top border-4 border-danger position-relative animate-up">
+                    <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-4"></button>
+                    <div class="text-center mb-4">
+                        <span class="badge bg-danger text-white mb-2 px-3 py-1 rounded-0 text-uppercase ls-1">Formulário de Escala</span>
+                        <h3 id="titulo-evento-form" class="fw-black text-dark mb-1 text-uppercase">...</h3>
+                        <p id="subtitulo-form" class="text-secondary fw-bold fs-5 text-uppercase">...</p>
+                    </div>
+                    <div id="container-inputs-militares" class="mb-4"></div>
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm fs-5 text-uppercase"><i class="bi bi-check-circle-fill me-2"></i> Conferir e Enviar</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000;">
-        <div class="bg-white p-4 rounded-4 w-100 shadow-lg animate-in" style="max-width: 900px;">
-            <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                <h5 class="fw-bold m-0 text-danger"><i class="bi bi-table me-2"></i>Escala Unificada</h5>
-                <button onclick="fecharPreview()" class="btn-close"></button>
+    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2000;">
+        <div class="bg-white p-0 rounded-4 w-100 shadow-lg animate-up overflow-hidden" style="max-width: 900px;">
+            <div class="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold m-0 text-uppercase"><i class="bi bi-table me-2"></i>Escala Unificada</h5>
+                <button onclick="fecharPreview()" class="btn-close btn-close-white"></button>
             </div>
-            <div class="alert alert-light border mb-3"><h4 class="fw-bold text-dark mb-0 text-center" id="preview-titulo">...</h4></div>
-            <div class="table-responsive border rounded mb-3 bg-white" style="max-height: 450px;">
-                <table class="table table-hover table-striped mb-0 align-middle"><thead class="table-dark small text-uppercase"><tr><th>#</th><th>Posto</th><th>Nome de Guerra</th><th>Contato</th><th>Unidade</th><th>Função</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
+            <div class="p-4">
+                <div class="alert alert-secondary border-start border-4 border-dark mb-3 rounded-0"><h4 class="fw-black text-dark mb-0 text-center text-uppercase" id="preview-titulo">...</h4></div>
+                <div class="table-responsive border rounded mb-3 bg-white" style="max-height: 400px;">
+                    <table class="table table-hover table-striped mb-0 align-middle"><thead class="table-dark small text-uppercase"><tr><th>#</th><th>Posto</th><th>Nome de Guerra</th><th>Contato</th><th>Unidade</th><th>Função</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
+                </div>
+                <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 py-3 fw-bold rounded-0 text-uppercase"><i class="bi bi-file-earmark-spreadsheet-fill me-2"></i> Exportar para Excel</button>
             </div>
-            <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 py-3 fw-bold rounded-3 text-uppercase"><i class="bi bi-file-earmark-spreadsheet-fill me-2"></i> Baixar Excel</button>
         </div>
     </div>
 
-    <div id="recibo-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2050;">
-        <div class="bg-white p-4 rounded-4 w-100 shadow-lg animate-in" style="max-width: 700px;">
-            <div class="text-center mb-4">
-                <h5 class="fw-bold text-success mb-1">CONFERÊNCIA DE ENVIO</h5>
-                <small class="text-muted">Verifique os dados antes de confirmar. Um recibo PDF será gerado.</small>
+    <div id="recibo-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.9); backdrop-filter: blur(5px); z-index: 2050;">
+        <div class="bg-white p-0 rounded-4 w-100 shadow-lg animate-up overflow-hidden" style="max-width: 700px;">
+            <div class="bg-danger text-white p-3 text-center">
+                <h5 class="fw-bold m-0 text-uppercase">Conferência Final</h5>
             </div>
-            
-            <div class="bg-light p-3 border rounded mb-3">
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span class="fw-bold">Evento:</span> <span id="recibo-evento">...</span>
+            <div class="p-4">
+                <p class="text-center text-muted small mb-3">Verifique os dados abaixo. Ao confirmar, um PDF oficial será gerado.</p>
+                <div class="bg-light p-3 border rounded mb-3">
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span class="fw-bold text-uppercase">Evento:</span> <span id="recibo-evento">...</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span class="fw-bold text-uppercase">Unidade:</span> <span id="recibo-unidade">...</span>
+                    </div>
+                    <div class="table-responsive mt-3" style="max-height: 300px;">
+                        <table class="table table-sm table-bordered small mb-0">
+                            <thead class="table-dark"><tr><th>Posto</th><th>Guerra</th><th>Nome Completo</th><th>Contato</th></tr></thead>
+                            <tbody id="recibo-lista-corpo" class="bg-white"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span class="fw-bold">Unidade:</span> <span id="recibo-unidade">...</span>
-                </div>
-                <div class="table-responsive mt-3" style="max-height: 300px;">
-                    <table class="recibo-preview-table">
-                        <thead><tr><th>Posto</th><th>Guerra</th><th>Nome Completo</th><th>Contato</th></tr></thead>
-                        <tbody id="recibo-lista-corpo" class="bg-white"></tbody>
-                    </table>
-                </div>
-            </div>
 
-            <div class="row g-2">
-                <div class="col-6">
-                    <button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3">VOLTAR E EDITAR</button>
-                </div>
-                <div class="col-6">
-                    <button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3"><i class="bi bi-file-earmark-pdf-fill me-2"></i> CONFIRMAR E BAIXAR PDF</button>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3 text-uppercase">Corrigir</button>
+                    </div>
+                    <div class="col-6">
+                        <button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3 text-uppercase"><i class="bi bi-file-pdf-fill me-2"></i> Confirmar</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -304,11 +430,14 @@
 
     <script type="module" src="app.js"></script>
     <script>
+        // Funções Globais para acesso via HTML onclick
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
         window.fecharModalRecibo = () => document.getElementById('recibo-modal').classList.replace('d-flex', 'd-none');
-        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEvento'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
+        
+        // Mapeamento das funções do módulo app.js para o escopo global window
+        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEvento','abrirEdicao'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>
 </html>
