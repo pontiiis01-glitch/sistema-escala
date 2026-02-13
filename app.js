@@ -1,4 +1,4 @@
-import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy } from './firebase-config.js';
+import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence } from './firebase-config.js';
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
@@ -12,8 +12,18 @@ let listaOrdensTemporaria = [];
 export async function fazerLogin() {
     const email = document.getElementById('email-login').value;
     const senha = document.getElementById('senha-login').value;
-    try { await signInWithEmailAndPassword(auth, email, senha); } 
-    catch (e) { document.getElementById('msg-erro').innerText = "Credenciais inválidas. Tente novamente."; }
+    
+    try { 
+        // CONFIGURAÇÃO DE SEGURANÇA: 
+        // Define que o login só dura enquanto a aba estiver aberta. Fechou, deslogou.
+        await setPersistence(auth, browserSessionPersistence);
+        
+        await signInWithEmailAndPassword(auth, email, senha); 
+    } 
+    catch (e) { 
+        console.error(e);
+        document.getElementById('msg-erro').innerText = "Credenciais inválidas. Tente novamente."; 
+    }
 }
 
 export async function fazerCadastro() {
@@ -62,7 +72,6 @@ async function carregarListaUnidades() {
     select.innerHTML = "<option value=''>Carregando...</option>";
     
     try {
-        // Busca apenas usuários com a função 'escalante'
         const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
         const snapshot = await getDocs(q);
         
@@ -75,16 +84,12 @@ async function carregarListaUnidades() {
         
         let unidades = [];
         snapshot.forEach(doc => unidades.push(doc.data().unidade));
-        
-        // Remove duplicatas e ordena
         unidades = [...new Set(unidades)].sort();
-        
         unidades.forEach(u => select.innerHTML += `<option value="${u}">${u}</option>`);
         
     } catch (e) {
         console.error("Erro ao carregar unidades:", e);
         select.innerHTML = "<option value=''>Erro de permissão/conexão</option>";
-        alert("ATENÇÃO: Não foi possível carregar a lista de unidades.\n\nProvável causa: As 'Regras de Segurança' (Rules) do Firestore estão bloqueando a leitura.\n\nErro técnico: " + e.message);
     }
 }
 

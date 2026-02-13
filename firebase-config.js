@@ -1,6 +1,6 @@
 // Importações via CDN (Versão 10.7.1)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // SUAS CHAVES DO PROJETO (JÁ CONFIGURADAS)
@@ -22,6 +22,6 @@ const db = getFirestore(app);
 // Exporta as ferramentas para os outros arquivos usarem
 export { 
     auth, db, 
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, 
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
     doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy 
 };
