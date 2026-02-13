@@ -21,7 +21,7 @@ import {
     updateDoc, 
     orderBy, 
     deleteDoc,
-    writeBatch // <--- Exportação crucial para deletar histórico
+    writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {

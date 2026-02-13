@@ -89,14 +89,14 @@
 
         .credits-footer { text-align: center; font-size: 0.65rem; color: #888; margin-top: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* MODAIS */
+        /* MODAIS FLUIDOS */
         .modal-overlay-custom {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000;
             display: flex; justify-content: center; align-items: center; padding: 1rem;
             opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
-        .modal-overlay-custom.active { opacity: 1; pointer-events: all; }
+        .modal-overlay-custom.active { opacity: 1; pointer-events: auto; } /* CORREÇÃO AQUI: auto em vez de all */
         
         .modal-content-custom {
             background: white; width: 100%; max-width: 900px; max-height: 90vh;
@@ -232,14 +232,11 @@
     <div id="modal-editar-admin" class="modal-overlay-custom">
         <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
             <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Editar Solicitação</h5><p class="text-muted small" id="edit-admin-subtitle">...</p></div>
-            
             <div class="mb-3"><label class="form-label-custom">Nova Função</label><select id="edit-admin-funcao" class="form-select text-uppercase"></select></div>
-            
             <div class="row g-2 mb-3">
                 <div class="col-6"><label class="form-label-custom">Oficiais</label><input type="number" id="edit-admin-of" class="form-control text-center fw-bold"></div>
                 <div class="col-6"><label class="form-label-custom">Praças</label><input type="number" id="edit-admin-pc" class="form-control text-center fw-bold"></div>
             </div>
-
             <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-4">
                 <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
                 <div class="row g-2">
@@ -247,7 +244,6 @@
                     <div class="col-5"><input type="time" id="edit-admin-prazo-hora" class="form-control border-0 fw-bold"></div>
                 </div>
             </div>
-
             <div class="d-flex gap-2">
                 <button onclick="fecharModal('modal-editar-admin')" class="btn btn-light w-50 fw-bold rounded-3 ios-click">Cancelar</button>
                 <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3 ios-click">Salvar</button>
@@ -326,17 +322,14 @@
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         
-        window.fecharModal = (id) => {
-            document.getElementById(id).classList.remove('active');
-        };
-        // Funções para abrir (usadas pelo app.js)
-        window.abrirModalUI = (id) => document.getElementById(id).classList.add('active');
-        
-        // Aliases para manter compatibilidade com o JS existente
+        // Controle de Modais
+        window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
+        // Aliases para compatibilidade
         window.fecharEdicao = () => window.fecharModal('form-militar-modal');
         window.fecharPreview = () => window.fecharModal('preview-modal');
         window.fecharModalRecibo = () => window.fecharModal('recibo-modal');
 
+        // Mapeamento Global para acesso via HTML onclick
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>

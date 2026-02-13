@@ -26,11 +26,11 @@ let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
 
 // === UTILITÁRIOS ===
-// Função para corrigir o problema de data "Dia Anterior"
+// Corrige data (evita problema de timezone UTC/Local)
 function formatarDataLocal(dataString) {
     if(!dataString) return "";
     const partes = dataString.split('-'); // 2026-02-13 -> [2026, 02, 13]
-    return `${partes[2]}/${partes[1]}/${partes[0]}`; // 13/02/2026
+    return `${partes[2]}/${partes[1]}/${partes[0]}`; // Retorna 13/02/2026 fixo
 }
 
 // === INICIALIZAÇÃO ===
@@ -57,23 +57,16 @@ function popularSelectCadastroEFuncoes() {
 async function carregarUnidadesCadastradasNoAdmin() {
     const selAdmin = document.getElementById('select-unidade');
     if(!selAdmin) return;
-    
     selAdmin.innerHTML = "<option value=''>Carregando...</option>";
-    
     try {
         const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
         const snapshot = await getDocs(q);
         const unidadesReais = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if(data.unidade) unidadesReais.push(data.unidade);
-        });
+        snapshot.forEach(doc => { const data = doc.data(); if(data.unidade) unidadesReais.push(data.unidade); });
         const unidadesUnicas = [...new Set(unidadesReais)].sort();
-
         selAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
         if(unidadesUnicas.length === 0) selAdmin.innerHTML += "<option disabled>Nenhuma unidade cadastrada</option>";
         else unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${u}">${u}</option>`);
-
     } catch (e) { console.error(e); selAdmin.innerHTML = "<option value=''>Erro ao carregar</option>"; }
 }
 
@@ -85,7 +78,6 @@ export async function fazerLogin() {
     const textoOriginal = btn.innerHTML;
     
     if(!email || !senha) return alert("Preencha email e senha");
-
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Acessando...';
     btn.disabled = true;
 
@@ -104,9 +96,7 @@ export async function fazerCadastro() {
     const email = document.getElementById('email-cadastro').value;
     const senha = document.getElementById('senha-cadastro').value;
     const unidade = document.getElementById('unidade-cadastro').value;
-    
     if(!email || !senha || !unidade) return alert("Preencha todos os campos.");
-    
     try {
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         await setDoc(doc(db, "usuarios", cred.user.uid), { email, unidade: unidade.toUpperCase(), funcao: "escalante" });
@@ -122,19 +112,15 @@ onAuthStateChanged(auth, async (user) => {
         const snap = await getDoc(doc(db, "usuarios", user.uid));
         if (snap.exists()) {
             perfilAtual = snap.data();
-            
             const loginArea = document.getElementById('login-area-wrapper');
             loginArea.style.opacity = '0';
-            
             setTimeout(() => {
                 loginArea.style.display = 'none';
                 const dash = document.getElementById('dashboard-screen');
                 dash.style.display = 'block';
                 setTimeout(() => dash.classList.add('visible'), 50);
-                
                 document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
                 popularSelectCadastroEFuncoes();
-
                 if (perfilAtual.funcao === 'admin') {
                     document.getElementById('admin-area').style.display = 'block';
                     carregarEventosAdmin();
@@ -154,10 +140,8 @@ export function adicionarOrdem() {
     const funcao = document.getElementById('select-funcao').value;
     const oficiais = document.getElementById('input-oficiais').value || 0;
     const pracas = document.getElementById('input-pracas').value || 0;
-
     if (!unidade) return alert("Selecione uma unidade!");
     if (oficiais == 0 && pracas == 0) return alert("Defina a quantidade.");
-
     listaOrdensTemporaria.push({ id: Date.now(), unidade, funcao, oficiais, pracas });
     atualizarTabelaOrdens();
 }
@@ -215,7 +199,6 @@ async function carregarEventosAdmin() {
         const q = query(collection(db, "escalas")); 
         const snapshot = await getDocs(q);
         const grupos = new Map();
-
         snapshot.forEach(doc => {
             const d = doc.data();
             if(!d.evento || !d.data) return;
@@ -225,16 +208,13 @@ async function carregarEventosAdmin() {
             g.total++;
             if (d.status === "Preenchido") g.respondidos++;
         });
-
         lista.innerHTML = "";
         if (grupos.size === 0) lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>";
-
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
-
         gruposArray.forEach(info => {
+            // DATA CORRIGIDA
             const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
-            
             lista.innerHTML += `
                 <div class="list-group-item p-3 border-bottom ios-click" onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -251,9 +231,7 @@ async function carregarEventosAdmin() {
 // ================= ADMIN PREVIEW & ACTIONS =================
 export async function abrirPreview(nomeEvento, dataEvento) {
     eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
-    const modal = document.getElementById('preview-modal');
-    modal.classList.add('active'); // Usa classe active para animação
-    
+    document.getElementById('preview-modal').classList.add('active'); // Abre modal
     document.getElementById('preview-titulo').innerText = nomeEvento;
     const corpo = document.getElementById('tabela-preview-corpo');
     corpo.innerHTML = "<tr><td colspan='6' class='text-center py-4'><span class='spinner-border text-danger'></span></td></tr>";
@@ -263,15 +241,13 @@ export async function abrirPreview(nomeEvento, dataEvento) {
         const snapshot = await getDocs(q);
         let html = "";
         let ordemGlobal = 1;
-        
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
             const idDoc = docSnap.id;
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             const cota = d.cota || {oficial: 0, praca: 0};
-
-            // Parâmetros para editar: ID, Unidade, Função, Oficiais, Praças, PrazoData, PrazoHora
+            // Parâmetros incluindo Prazo
             const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca}, '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
@@ -309,7 +285,7 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora
     document.getElementById('edit-admin-funcao').value = funcao;
     document.getElementById('edit-admin-of').value = of;
     document.getElementById('edit-admin-pc').value = pc;
-    // Preenche prazo
+    // Preenche campos de prazo
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     
@@ -321,6 +297,7 @@ export async function salvarEdicaoAdmin() {
     const novaFuncao = document.getElementById('edit-admin-funcao').value;
     const novoOf = document.getElementById('edit-admin-of').value;
     const novoPc = document.getElementById('edit-admin-pc').value;
+    // Pega novos prazos
     const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
     const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
@@ -349,14 +326,12 @@ export async function excluirEventoCompleto() {
     if(!eventoPreviewAtual) return;
     const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\nDigite "APAGAR" para confirmar:`);
     if(confirmar !== "APAGAR") return;
-
     try {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        
         alert("Evento apagado.");
         document.getElementById('preview-modal').classList.remove('active');
         carregarEventosAdmin();
@@ -386,16 +361,15 @@ async function carregarPendenciasUnidade() {
             let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
             let btnText = isPendente ? "RESPONDER AGORA" : "EDITAR ENVIO";
             
-            // CORREÇÃO DO BLOQUEIO DE PRAZO
+            // LÓGICA DE BLOQUEIO RIGOROSA
             if (d.prazoData) {
-                // Cria data limite EXATA baseada na string (YYYY-MM-DDTHH:MM)
                 const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
                 const dataLimite = new Date(dataLimiteStr);
                 const hoje = new Date();
 
                 if (hoje > dataLimite) {
                     isBloqueado = true;
-                    btnClass = "btn-secondary";
+                    btnClass = "btn-secondary disabled";
                     btnText = "PRAZO ENCERRADO";
                     textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO EM ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
                 } else {
@@ -432,21 +406,16 @@ export async function abrirEdicao(id) {
     
     document.getElementById('titulo-evento-form').innerText = d.evento;
     document.getElementById('subtitulo-form').innerText = `${d.funcao} | Cota: ${cota.oficial} Of / ${cota.praca} Pç`;
-    
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
-
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
-
     let contador = 0;
     const qtdOf = parseInt(cota.oficial) || 0;
     const qtdPc = parseInt(cota.praca) || 0;
-
     for(let i=0; i < qtdOf; i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
     for(let i=0; i < qtdPc; i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
-
-    document.getElementById('form-militar-modal').classList.add('active');
+    document.getElementById('form-militar-modal').classList.add('active'); // Abre modal
 }
 
 function gerarHtmlMilitar(index, tipo, dados) {
@@ -473,16 +442,13 @@ export function abrirPreviaRecibo() {
         const contato = row.querySelector('.campo-tel').value.trim();
         if(posto && nome && guerra) lista.push({ posto, nome, guerra, contato });
     });
-
     if(lista.length === 0) return alert("Preencha os dados dos militares.");
     dadosParaEnvio = lista;
     document.getElementById('recibo-evento').innerText = document.getElementById('titulo-evento-form').innerText;
     document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
-    
     const tbody = document.getElementById('recibo-lista-corpo');
     tbody.innerHTML = "";
     lista.forEach(m => tbody.innerHTML += `<tr><td>${m.posto}</td><td><strong>${m.guerra}</strong></td><td>${m.nome}</td><td>${m.contato}</td></tr>`);
-
     document.getElementById('recibo-modal').classList.add('active');
 }
 
@@ -501,22 +467,18 @@ function gerarReciboPDFProfissional(listaMilitares) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
-    
     doc.setLineWidth(0.5); doc.rect(5, 5, 200, 287);
     doc.setFillColor(153, 0, 0); doc.rect(5, 5, 200, 25, 'F');
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
     doc.text("RECIBO DE ENVIO - CBMMA", 105, 18, null, null, "center");
-    
     doc.setTextColor(0, 0, 0); doc.setFontSize(11);
     doc.text(`UNIDADE: ${perfilAtual.unidade}`, 15, 40);
     doc.text(`EVENTO: ${tituloEvento}`, 15, 46);
     doc.text(`DATA: ${new Date().toLocaleString()}`, 15, 52);
-    
     let y = 65;
     doc.setFillColor(230, 230, 230); doc.rect(15, 60, 180, 8, 'F');
     doc.setFontSize(9); doc.setFont("helvetica", "bold");
     doc.text("POSTO", 20, 65); doc.text("GUERRA", 50, 65); doc.text("NOME", 90, 65); doc.text("CONTATO", 160, 65);
-
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
         if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); }
@@ -526,7 +488,7 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL COM HORÁRIO NO CABEÇALHO ===
+// === EXCEL CORRIGIDO COM HORÁRIO ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -535,8 +497,8 @@ export async function baixarExcelDoEvento() {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
 
-        // Pega horário do primeiro documento encontrado para por no cabeçalho
-        let horarioTexto = "HORÁRIO INDEFINIDO";
+        // Busca horário do primeiro doc
+        let horarioTexto = "";
         if (!snapshot.empty) {
             const dPrimeiro = snapshot.docs[0].data();
             if(dPrimeiro.horaInicio && dPrimeiro.horaFim) {
@@ -544,10 +506,9 @@ export async function baixarExcelDoEvento() {
             }
         }
 
-        // LINHA 1: TÍTULO
         const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
-        // Adicionado Horário aqui
+        // CABEÇALHO COM HORÁRIO AQUI:
         titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
         
         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
@@ -555,7 +516,6 @@ export async function baixarExcelDoEvento() {
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         titleRow.height = 30;
 
-        // LINHA 2: CABEÇALHO
         const headerRow = worksheet.getRow(2);
         headerRow.values = ['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO'];
         
@@ -567,28 +527,21 @@ export async function baixarExcelDoEvento() {
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         }
 
-        worksheet.columns = [
-            { width: 8 }, { width: 15 }, { width: 50 }, { width: 18 }, { width: 15 }, { width: 20 }
-        ];
+        worksheet.columns = [{ width: 8 }, { width: 15 }, { width: 50 }, { width: 18 }, { width: 15 }, { width: 20 }];
 
         let contador = 1;
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch { return; }
-
             militares.forEach(m => {
-                const row = worksheet.addRow([
-                    contador++, m.posto, '', m.contato, d.unidade, d.funcao
-                ]);
-
+                const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
                 row.getCell(3).value = {
                     richText: [
                         { text: m.guerra.toUpperCase(), font: { bold: true, name: 'Arial' } },
                         { text: "  " + m.nome.toUpperCase(), font: { bold: false, name: 'Arial' } }
                     ]
                 };
-
                 row.eachCell((cell) => {
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -596,10 +549,10 @@ export async function baixarExcelDoEvento() {
                 row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
             });
         });
-
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `${eventoPreviewAtual.nome}_OFICIAL.xlsx`);
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
+// Exporta tudo (Garante que os botões do HTML funcionem)
 window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin };
