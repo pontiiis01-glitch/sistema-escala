@@ -156,13 +156,15 @@
                     <input type="email" id="email-login" class="form-control" placeholder="ex: 1bbm@cbm.ma.gov.br">
                 </div>
                 <div class="mb-4">
-                    <label class="form-label small text-muted fw-bold">SENHA</label>
-                    <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
-                </div>
-                <button onclick="fazerLogin()" class="btn btn-custom btn-primary-cbm w-100 mb-3">Entrar no Sistema</button>
-                <div class="text-center">
-                    <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small text-secondary fw-bold">Cadastrar Nova Unidade</a>
-                </div>
+    <label class="form-label small text-muted fw-bold">SENHA</label>
+    <div class="position-relative">
+        <input type="password" id="senha-login" class="form-control" placeholder="••••••••" style="padding-right: 40px;">
+        <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted" 
+           id="icone-senha" 
+           onclick="toggleSenha()" 
+           style="cursor: pointer; font-size: 1.2rem;"></i>
+    </div>
+</div>
             </div>
 
             <div id="cadastro-form" style="display: none;">
@@ -372,11 +374,32 @@
             else { login.style.display = 'none'; cadastro.style.display = 'block'; }
             document.getElementById('msg-erro').innerText = "";
         };
+
+        // --- FUNÇÃO NOVA: VER SENHA ---
+        window.toggleSenha = () => {
+            const input = document.getElementById('senha-login');
+            const icone = document.getElementById('icone-senha');
+            
+            // Se for senha, vira texto (mostra). Se for texto, vira senha (esconde).
+            if (input.type === 'password') {
+                input.type = 'text';
+                icone.classList.remove('bi-eye-slash-fill');
+                icone.classList.add('bi-eye-fill');
+                icone.classList.remove('text-muted');
+                icone.classList.add('text-primary');
+            } else {
+                input.type = 'password';
+                icone.classList.remove('bi-eye-fill');
+                icone.classList.add('bi-eye-slash-fill');
+                icone.classList.remove('text-primary');
+                icone.classList.add('text-muted');
+            }
+        };
+        // ------------------------------
+
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
 
         const funcoes = ['fazerLogin', 'fazerCadastro', 'sair', 'adicionarOrdem', 'limparOrdens', 'excluirOrdem', 'dispararSolicitacao', 'salvarEscala', 'abrirPreview', 'baixarExcelDoEvento'];
         funcoes.forEach(f => window[f] = (...args) => window.app[f] && window.app[f](...args));
     </script>
-</body>
-</html>
