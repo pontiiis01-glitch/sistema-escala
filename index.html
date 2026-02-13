@@ -96,7 +96,7 @@
             display: flex; justify-content: center; align-items: center; padding: 1rem;
             opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
-        .modal-overlay-custom.active { opacity: 1; pointer-events: auto; } /* CORREÇÃO AQUI: auto em vez de all */
+        .modal-overlay-custom.active { opacity: 1; pointer-events: auto; } 
         
         .modal-content-custom {
             background: white; width: 100%; max-width: 900px; max-height: 90vh;
@@ -177,7 +177,10 @@
                     <div class="col-lg-5">
                         <div class="bg-white p-4 rounded-4 shadow-sm h-100 animate-up border-top border-4 border-danger">
                             <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão</h6>
-                            <div class="mb-3"><label class="form-label-custom">Operação</label><input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME"></div>
+                            <div class="mb-3">
+                                <label class="form-label-custom">Operação</label>
+                                <input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME" oninput="this.value = this.value.toUpperCase()">
+                            </div>
                             <div class="mb-3"><label class="form-label-custom">Data</label><input type="date" id="data-evento" class="form-control"></div>
                             <div class="bg-light p-3 rounded-4 mb-3 border">
                                 <div class="row g-2">
@@ -322,14 +325,9 @@
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         
-        // Controle de Modais
         window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
-        // Aliases para compatibilidade
-        window.fecharEdicao = () => window.fecharModal('form-militar-modal');
-        window.fecharPreview = () => window.fecharModal('preview-modal');
-        window.fecharModalRecibo = () => window.fecharModal('recibo-modal');
-
-        // Mapeamento Global para acesso via HTML onclick
+        
+        // Mapeamento Global
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>

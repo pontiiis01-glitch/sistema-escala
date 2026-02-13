@@ -26,11 +26,22 @@ let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
 
 // === UTILITÁRIOS ===
-// Corrige data (evita problema de timezone UTC/Local)
 function formatarDataLocal(dataString) {
     if(!dataString) return "";
-    const partes = dataString.split('-'); // 2026-02-13 -> [2026, 02, 13]
-    return `${partes[2]}/${partes[1]}/${partes[0]}`; // Retorna 13/02/2026 fixo
+    const partes = dataString.split('-'); 
+    return `${partes[2]}/${partes[1]}/${partes[0]}`; 
+}
+
+// Formata telefone para 98 9XXXX-XXXX
+window.formatarTelefoneInput = function(input) {
+    let v = input.value.replace(/\D/g, ""); // Remove tudo que não é dígito
+    v = v.substring(0, 11); // Limita tamanho
+    
+    // Máscara 98 9XXXX-XXXX
+    if (v.length > 2) v = v.replace(/^(\d\d)(\d)/g, "$1 $2"); 
+    if (v.length > 7) v = v.replace(/(\d{5})(\d)/, "$1-$2"); 
+    
+    input.value = v;
 }
 
 // === INICIALIZAÇÃO ===
@@ -212,7 +223,6 @@ async function carregarEventosAdmin() {
         if (grupos.size === 0) lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>";
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
         gruposArray.forEach(info => {
-            // DATA CORRIGIDA
             const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
             lista.innerHTML += `
@@ -231,7 +241,7 @@ async function carregarEventosAdmin() {
 // ================= ADMIN PREVIEW & ACTIONS =================
 export async function abrirPreview(nomeEvento, dataEvento) {
     eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
-    document.getElementById('preview-modal').classList.add('active'); // Abre modal
+    document.getElementById('preview-modal').classList.add('active'); 
     document.getElementById('preview-titulo').innerText = nomeEvento;
     const corpo = document.getElementById('tabela-preview-corpo');
     corpo.innerHTML = "<tr><td colspan='6' class='text-center py-4'><span class='spinner-border text-danger'></span></td></tr>";
@@ -240,14 +250,13 @@ export async function abrirPreview(nomeEvento, dataEvento) {
         const q = query(collection(db, "escalas"), where("evento", "==", nomeEvento), where("data", "==", dataEvento));
         const snapshot = await getDocs(q);
         let html = "";
-        let ordemGlobal = 1;
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
             const idDoc = docSnap.id;
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             const cota = d.cota || {oficial: 0, praca: 0};
-            // Parâmetros incluindo Prazo
+            
             const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca}, '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
@@ -265,7 +274,7 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             } else {
                 militares.forEach((m, index) => {
                     html += `<tr>
-                        <td class="fw-bold text-center text-muted">${ordemGlobal++}</td>
+                        <td class="fw-bold text-center text-muted">${index + 1}</td>
                         <td><span class="fw-bold">${m.posto}</span> ${m.guerra}</td>
                         <td class="small text-muted">${m.contato}</td>
                         <td class="fw-bold text-dark">${d.unidade}</td>
@@ -285,10 +294,8 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora
     document.getElementById('edit-admin-funcao').value = funcao;
     document.getElementById('edit-admin-of').value = of;
     document.getElementById('edit-admin-pc').value = pc;
-    // Preenche campos de prazo
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
-    
     document.getElementById('modal-editar-admin').classList.add('active');
 }
 
@@ -297,7 +304,6 @@ export async function salvarEdicaoAdmin() {
     const novaFuncao = document.getElementById('edit-admin-funcao').value;
     const novoOf = document.getElementById('edit-admin-of').value;
     const novoPc = document.getElementById('edit-admin-pc').value;
-    // Pega novos prazos
     const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
     const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
@@ -361,7 +367,6 @@ async function carregarPendenciasUnidade() {
             let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
             let btnText = isPendente ? "RESPONDER AGORA" : "EDITAR ENVIO";
             
-            // LÓGICA DE BLOQUEIO RIGOROSA
             if (d.prazoData) {
                 const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
                 const dataLimite = new Date(dataLimiteStr);
@@ -415,18 +420,27 @@ export async function abrirEdicao(id) {
     const qtdPc = parseInt(cota.praca) || 0;
     for(let i=0; i < qtdOf; i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
     for(let i=0; i < qtdPc; i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
-    document.getElementById('form-militar-modal').classList.add('active'); // Abre modal
+    document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
+// GERA INPUTS COM UPPERCASE E MÁSCARA TELEFONE
 function gerarHtmlMilitar(index, tipo, dados) {
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
         <div class="row g-2">
-            <div class="col-4 col-md-3"><input type="text" class="form-control campo-posto fw-bold" placeholder="Posto" value="${dados.posto || ''}"></div>
-            <div class="col-8 col-md-5"><input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${dados.nome || ''}"></div>
-            <div class="col-6 col-md-4"><input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="Nome Guerra" value="${dados.guerra || ''}"></div>
-            <div class="col-6 col-md-12"><input type="text" class="form-control campo-tel" placeholder="Telefone" value="${dados.contato || ''}"></div>
+            <div class="col-4 col-md-3">
+                <input type="text" class="form-control campo-posto fw-bold" placeholder="Posto" value="${dados.posto || ''}" oninput="this.value = this.value.toUpperCase()">
+            </div>
+            <div class="col-8 col-md-5">
+                <input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${dados.nome || ''}" oninput="this.value = this.value.toUpperCase()">
+            </div>
+            <div class="col-6 col-md-4">
+                <input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="Nome Guerra" value="${dados.guerra || ''}" oninput="this.value = this.value.toUpperCase()">
+            </div>
+            <div class="col-6 col-md-12">
+                <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${dados.contato || ''}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
+            </div>
         </div>
     </div>`;
 }
@@ -436,10 +450,11 @@ export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
     rows.forEach(row => {
-        const posto = row.querySelector('.campo-posto').value.trim();
-        const nome = row.querySelector('.campo-nome').value.trim();
-        const guerra = row.querySelector('.campo-guerra').value.trim();
-        const contato = row.querySelector('.campo-tel').value.trim();
+        // FORÇA UPPERCASE AQUI TAMBÉM
+        const posto = row.querySelector('.campo-posto').value.trim().toUpperCase();
+        const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
+        const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
+        const contato = row.querySelector('.campo-tel').value.trim(); // Contato mantém formatação
         if(posto && nome && guerra) lista.push({ posto, nome, guerra, contato });
     });
     if(lista.length === 0) return alert("Preencha os dados dos militares.");
@@ -482,13 +497,13 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
         if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); }
-        doc.text(m.posto, 20, y); doc.text(m.guerra.toUpperCase(), 50, y); doc.text(m.nome.substring(0,30), 90, y); doc.text(m.contato, 160, y);
+        doc.text(m.posto, 20, y); doc.text(m.guerra, 50, y); doc.text(m.nome.substring(0,30), 90, y); doc.text(m.contato, 160, y);
         y += 7;
     });
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL CORRIGIDO COM HORÁRIO ===
+// === EXCEL INTELIGENTE: NEGRITO DENTRO DO NOME (SEM REPETIR) ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -497,8 +512,7 @@ export async function baixarExcelDoEvento() {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
 
-        // Busca horário do primeiro doc
-        let horarioTexto = "";
+        let horarioTexto = "HORÁRIO INDEFINIDO";
         if (!snapshot.empty) {
             const dPrimeiro = snapshot.docs[0].data();
             if(dPrimeiro.horaInicio && dPrimeiro.horaFim) {
@@ -508,9 +522,7 @@ export async function baixarExcelDoEvento() {
 
         const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
-        // CABEÇALHO COM HORÁRIO AQUI:
         titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
-        
         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
         titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -536,12 +548,35 @@ export async function baixarExcelDoEvento() {
             try { militares = JSON.parse(d.militares); } catch { return; }
             militares.forEach(m => {
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
-                row.getCell(3).value = {
-                    richText: [
-                        { text: m.guerra.toUpperCase(), font: { bold: true, name: 'Arial' } },
-                        { text: "  " + m.nome.toUpperCase(), font: { bold: false, name: 'Arial' } }
-                    ]
-                };
+                
+                // LÓGICA DE NEGRITO (Rich Text)
+                const nomeUpper = m.nome.toUpperCase();
+                const guerraUpper = m.guerra.toUpperCase();
+                const indexGuerra = nomeUpper.indexOf(guerraUpper);
+
+                let richTextValue = [];
+
+                if (indexGuerra !== -1) {
+                    // SE ACHOU O NOME DE GUERRA DENTRO DO NOME COMPLETO:
+                    // Parte antes do nome de guerra
+                    const part1 = nomeUpper.substring(0, indexGuerra);
+                    // O nome de guerra em si
+                    const part2 = nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length);
+                    // Parte depois do nome de guerra
+                    const part3 = nomeUpper.substring(indexGuerra + guerraUpper.length);
+
+                    richTextValue = [
+                        { text: part1, font: { bold: false, name: 'Arial' } },
+                        { text: part2, font: { bold: true, name: 'Arial' } }, // SÓ ESSE EM NEGRITO
+                        { text: part3, font: { bold: false, name: 'Arial' } }
+                    ];
+                } else {
+                    // Se não achou (erro de digitação do usuário), mostra só o nome normal
+                    richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
+                }
+
+                row.getCell(3).value = { richText: richTextValue };
+
                 row.eachCell((cell) => {
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -554,5 +589,4 @@ export async function baixarExcelDoEvento() {
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
-// Exporta tudo (Garante que os botões do HTML funcionem)
 window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin };
