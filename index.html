@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COMANDO OPERACIONAL METROPOLITANO - CBMMA</title>
-    <link rel="icon" type="image/png" href="image_881b9d.png">
+    <link rel="icon" type="image/png" href="brasao.png">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -13,11 +13,9 @@
     
     <style>
         :root {
-            /* Cores mais ricas e profundas para um visual imponente */
             --primary-red: #b30000;
             --dark-red: #800000;
-            --accent-gold: #d4af37; /* Cor de destaque para detalhes */
-            --glass-bg: rgba(255, 255, 255, 0.92);
+            --glass-bg: rgba(255, 255, 255, 0.95);
             --app-bg: #f0f2f5;
         }
 
@@ -29,134 +27,102 @@
             flex-direction: column;
         }
 
-        /* --- CABEÇALHO IMPONENTE (HERO) --- */
+        /* --- CABEÇALHO IMPONENTE --- */
         .imposing-header {
-            /* Gradiente rico e profundo */
             background: linear-gradient(135deg, var(--dark-red) 10%, var(--primary-red) 100%);
-            /* Adiciona uma textura sutil para mais sofisticação */
-            background-image: linear-gradient(135deg, var(--dark-red) 10%, var(--primary-red) 100%), url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            padding: 4rem 1rem 8rem 1rem; /* Bem alto */
+            padding: 3rem 1rem 6rem 1rem;
             text-align: center;
             color: white;
             position: relative;
-            /* Curva suave na parte inferior */
-            border-bottom-left-radius: 50% 20px;
-            border-bottom-right-radius: 50% 20px;
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 1;
         }
 
-        .brasao-hero {
-            height: 110px; /* Brasão maior */
+        .logos-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
             margin-bottom: 1.5rem;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));
-            transition: transform 0.3s ease;
         }
-        .brasao-hero:hover { transform: scale(1.05); }
+
+        .brasao-cbm {
+            height: 85px;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+            opacity: 0.9;
+            transition: transform 0.3s;
+        }
+
+        .brasao-unidade {
+            height: 110px;
+            filter: drop-shadow(0 6px 15px rgba(0,0,0,0.5));
+            transform: scale(1.05);
+            transition: transform 0.3s;
+        }
+        
+        .brasao-unidade:hover, .brasao-cbm:hover { transform: scale(1.1); }
 
         .hero-title {
-            font-weight: 900; /* Fonte super pesada */
-            font-size: 2.5rem;
+            font-weight: 900;
+            font-size: 2.2rem;
             text-transform: uppercase;
-            letter-spacing: -0.5px;
+            letter-spacing: -1px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 0.5rem;
         }
         
         .hero-subtitle {
-            font-size: 1.1rem;
-            font-weight: 400;
-            opacity: 0.9;
-            letter-spacing: 1px;
+            font-size: 1rem;
             text-transform: uppercase;
-        }
-        .hero-subtitle::before, .hero-subtitle::after {
-            content: " — "; color: var(--accent-gold); opacity: 0.7;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            font-weight: 600;
         }
 
-
-        /* --- CONTAINER DE LOGIN (FLUTUANTE) --- */
-        /* Este container sobe para cima do cabeçalho */
+        /* --- LOGIN FLUTUANTE --- */
         .login-overlap-container {
-            margin-top: -70px; /* O "pulo do gato" para flutuar */
+            margin-top: -50px;
             position: relative;
             z-index: 10;
-            padding-bottom: 50px;
         }
 
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.15);
             max-width: 450px;
             margin: 0 auto;
         }
 
-        /* --- ESTILOS GERAIS DOS FORMULÁRIOS --- */
-        .form-control, .form-select {
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid #dce0e4;
-            font-weight: 500;
-        }
-        .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(179, 0, 0, 0.15);
-            border-color: var(--primary-red);
-        }
-
-        .btn-imposing {
-            background: linear-gradient(to right, var(--dark-red), var(--primary-red));
-            color: white;
-            font-weight: 800;
-            text-transform: uppercase;
-            padding: 14px;
-            border-radius: 10px;
-            border: none;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 15px rgba(128, 0, 0, 0.2);
-            transition: all 0.2s;
-        }
-        .btn-imposing:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(128, 0, 0, 0.3);
-            color: white;
-        }
-        
-        .link-cadastro-catavante {
-            color: var(--primary-red);
-            font-weight: 700;
-            text-decoration: none;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .link-cadastro-catavante:hover {
-            border-bottom-color: var(--primary-red);
-            color: var(--dark-red);
-        }
-
-        /* --- ÁREA DO DASHBOARD (NÃO FLUTUANTE) --- */
-        /* Esta área fica no fluxo normal, abaixo do cabeçalho */
-        .dashboard-container {
-            padding-top: 2rem;
-            padding-bottom: 4rem;
-            flex: 1;
-        }
-
+        /* --- DASHBOARD --- */
+        .dashboard-container { padding-top: 2rem; padding-bottom: 4rem; flex: 1; }
         .dashboard-welcome-bar {
-            background: white;
-            padding: 1.5rem 2rem;
-            border-radius: 16px;
+            background: white; padding: 1.5rem 2rem; border-radius: 16px;
             box-shadow: 0 2px 15px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: flex; justify-content: space-between; align-items: center;
             border-left: 5px solid var(--primary-red);
         }
 
-        /* --- UTILITÁRIOS E ANIMAÇÕES --- */
+        /* --- FORMULÁRIOS --- */
+        .form-label-custom {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #6c757d;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+        .form-control, .form-select { border-radius: 8px; padding: 10px; border: 1px solid #ced4da; }
+        .form-control:focus, .form-select:focus { border-color: var(--primary-red); box-shadow: 0 0 0 3px rgba(179,0,0,0.1); }
+
+        .btn-imposing {
+            background: var(--primary-red); color: white; border: none;
+            transition: all 0.2s;
+        }
+        .btn-imposing:hover { background: var(--dark-red); color: white; transform: translateY(-2px); }
+
         .animate-in { animation: fadeUp 0.5s ease-out forwards; opacity: 0; transform: translateY(15px); }
         @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -165,131 +131,132 @@
 
     <header class="imposing-header">
         <div class="container animate-in">
-            <img src="image_881b9d.png" class="brasao-hero" alt="Brasão CBMMA">
+            <div class="logos-container">
+                <img src="brasao.png" class="brasao-cbm" alt="Brasão CBMMA">
+                <img src="brasao-unidade.png" class="brasao-unidade" alt="Brasão Comando Operacional">
+            </div>
             <h1 class="hero-title">Comando Operacional Metropolitano</h1>
-            <p class="hero-subtitle">Sistema de Gestão de Escalas Integrado</p>
+            <p class="hero-subtitle mb-0">Sistema de Gestão de Escalas Integrado</p>
         </div>
     </header>
 
     <div id="login-area-wrapper" class="container login-overlap-container">
-        <div id="auth-container" class="glass-card p-4 p-md-5 animate-in" style="animation-delay: 0.1s;">
-            
+        <div id="auth-container" class="glass-card p-4 p-md-5 animate-in">
             <div id="login-form">
                 <div class="text-center mb-4">
-                    <h4 class="fw-bold">Acesso ao Sistema</h4>
-                    <p class="text-muted small">Insira suas credenciais institucionais</p>
+                    <h4 class="fw-bold text-dark">Acesso Restrito</h4>
+                    <p class="text-muted small">Identifique-se para prosseguir</p>
                 </div>
-
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-secondary ms-1">E-mail</label>
-                    <input type="email" id="email-login" class="form-control fw-bold" placeholder="seunome@cbm.ma.gov.br">
+                    <label class="form-label-custom">E-mail Institucional</label>
+                    <input type="email" id="email-login" class="form-control fw-bold" placeholder="usuario@cbm.ma.gov.br">
                 </div>
-                <div class="mb-4 position-relative">
-                    <label class="form-label small fw-bold text-secondary ms-1">Senha</label>
-                    <input type="password" id="senha-login" class="form-control fw-bold" placeholder="••••••••">
-                    <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 mt-4 text-secondary opacity-50" id="icone-senha" onclick="toggleSenha()" style="cursor: pointer;"></i>
+                <div class="mb-4">
+                    <label class="form-label-custom">Senha</label>
+                    <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
                 </div>
-                
-                <button onclick="fazerLogin()" class="btn btn-imposing w-100 mb-4">Acessar Painel</button>
-                
-                <div class="text-center border-top pt-4">
-                    <a href="#" onclick="alternarTela('cadastro')" class="link-cadastro-catavante small">
-                       <i class="bi bi-shield-plus me-1"></i> Não possui cadastro? Cadastre sua unidade aqui.
+                <button onclick="fazerLogin()" class="btn btn-imposing w-100 fw-bold py-3 rounded-3 shadow-sm text-uppercase">Acessar Sistema</button>
+                <div class="text-center mt-4 pt-3 border-top">
+                    <a href="#" onclick="alternarTela('cadastro')" class="text-danger fw-bold small text-decoration-none">
+                        <i class="bi bi-shield-plus me-1"></i> Não possui cadastro? Cadastre sua unidade aqui.
                     </a>
                 </div>
             </div>
 
             <div id="cadastro-form" style="display: none;">
-                <div class="text-center mb-4">
-                    <h4 class="fw-bold text-danger">Nova Unidade</h4>
-                    <p class="text-muted small">Cadastro Oficial OBM/COM</p>
-                </div>
+                <div class="text-center mb-4"><h4 class="fw-bold text-danger">Nova Unidade</h4><p class="small text-muted">Cadastro Oficial OBM</p></div>
                 <div class="mb-3"><input type="text" id="unidade-cadastro" class="form-control" placeholder="Nome da Unidade (Ex: 1º BBM)"></div>
                 <div class="mb-3"><input type="email" id="email-cadastro" class="form-control" placeholder="E-mail Institucional"></div>
-                <div class="mb-4"><input type="password" id="senha-cadastro" class="form-control" placeholder="Crie uma Senha Forte"></div>
-                <button onclick="fazerCadastro()" class="btn btn-imposing w-100 mb-3">Finalizar Cadastro</button>
-                <div class="text-center">
-                    <a href="#" onclick="alternarTela('login')" class="text-secondary fw-bold text-decoration-none small">
-                        <i class="bi bi-arrow-left"></i> Voltar ao Login
-                    </a>
-                </div>
+                <div class="mb-4"><input type="password" id="senha-cadastro" class="form-control" placeholder="Criar Senha"></div>
+                <button onclick="fazerCadastro()" class="btn btn-imposing w-100 fw-bold py-2">FINALIZAR CADASTRO</button>
+                <div class="text-center mt-3"><a href="#" onclick="alternarTela('login')" class="small text-secondary fw-bold text-decoration-none">← Voltar ao Login</a></div>
             </div>
             <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
         </div>
     </div>
-
 
     <main id="dashboard-screen" class="container dashboard-container animate-in" style="display: none;">
         
         <div class="dashboard-welcome-bar mb-5">
             <div>
                 <small class="text-uppercase text-muted fw-bold ls-1">Painel de Controle</small>
-                <h2 id="titulo-unidade" class="fw-bold m-0 text-dark mt-1">Carregando unidade...</h2>
+                <h2 id="titulo-unidade" class="fw-bold m-0 text-dark mt-1">...</h2>
             </div>
-            <button onclick="sair()" class="btn btn-outline-danger rounded-pill px-4 fw-bold small d-flex align-items-center">
-                <i class="bi bi-box-arrow-right me-2"></i> SAIR
-            </button>
+            <button onclick="sair()" class="btn btn-outline-danger px-4 fw-bold small rounded-pill border-2"><i class="bi bi-box-arrow-right me-2"></i> SAIR</button>
         </div>
 
         <div id="admin-area" style="display: none;">
             <div class="row g-4">
                 <div class="col-lg-4">
                     <div class="bg-white p-4 rounded-4 shadow-sm border h-100">
-                        <h5 class="text-danger fw-black mb-4"><i class="bi bi-rocket-takeoff-fill me-2"></i>NOVA MISSÃO</h5>
-                        <input type="text" id="nome-evento" placeholder="Nome da Operação/Evento" class="form-control mb-2 fw-bold">
-                        <div class="row g-2 mb-2">
-                            <div class="col-6"><input type="date" id="data-evento" class="form-control"></div>
-                            <div class="col-6"><input type="text" id="horario-evento" placeholder="00:00h" class="form-control text-center"></div>
+                        <h5 class="text-danger fw-black mb-4 pb-2 border-bottom"><i class="bi bi-file-earmark-plus-fill me-2"></i>NOVA MISSÃO</h5>
+                        
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <h6 class="text-primary fw-bold small mb-3"><i class="bi bi-flag-fill me-1"></i> DADOS DA OPERAÇÃO</h6>
+                            <label class="form-label-custom">Nome do Evento</label>
+                            <input type="text" id="nome-evento" placeholder="Ex: Operação Carnaval" class="form-control mb-2 fw-bold">
+                            <div class="row g-2">
+                                <div class="col-6"><label class="form-label-custom">Data Início</label><input type="date" id="data-evento" class="form-control"></div>
+                                <div class="col-6"><label class="form-label-custom">Horário</label><input type="text" id="horario-evento" placeholder="18:00h" class="form-control text-center"></div>
+                            </div>
                         </div>
-                        <label class="small text-muted fw-bold ms-1">Prazo para resposta:</label>
-                        <input type="date" id="prazo-evento" class="form-control mb-3">
+
+                        <div class="p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25 mb-4">
+                            <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-stopwatch-fill me-1"></i> PRAZO DE RESPOSTA</h6>
+                            <label class="form-label-custom text-danger">Data Limite (Bloqueio)</label>
+                            <input type="date" id="prazo-evento" class="form-control border-danger fw-bold text-danger">
+                            <small class="text-muted d-block mt-1 lh-1" style="font-size: 0.7rem;">O sistema bloqueará o envio das unidades após as 23:59 desta data.</small>
+                        </div>
                         
                         <hr class="opacity-25 my-4">
                         
-                        <h6 class="fw-bold text-dark mb-3">Adicionar Efetivo</h6>
-                        <select id="select-unidade" class="form-select mb-2 fw-bold text-secondary"><option>Aguarde...</option></select>
-                        <select id="select-funcao" class="form-select mb-2 fw-bold text-secondary">
+                        <label class="form-label-custom">Unidade Solicitada</label>
+                        <select id="select-unidade" class="form-select mb-2 fw-bold text-secondary"><option>Carregando...</option></select>
+                        
+                        <label class="form-label-custom">Função</label>
+                        <select id="select-funcao" class="form-select mb-2">
                             <option value="SOCORRISTA">SOCORRISTA</option>
-                            <option value="MOTORISTA (AR/ABT)">MOTORISTA (AR/ABT)</option>
-                            <option value="COORD. DE OPERAÇÕES">COORD. DE OPERAÇÕES</option>
+                            <option value="AR (MOTORISTA)">AR (MOTORISTA)</option>
+                            <option value="COORD. DO EVENTO">COORD. DO EVENTO</option>
+                            <option value="SUBCOORD. DO EVENTO">SUBCOORD. DO EVENTO</option>
                             <option value="OF. DE LOGÍSTICA">OF. DE LOGÍSTICA</option>
-                            <option value="MOP (MOTO)">MOP (MOTO)</option>
-                            <option value="MERGULHADOR">MERGULHADOR</option>
+                            <option value="AUX. DE LOGÍSTICA">AUX. DE LOGÍSTICA</option>
+                            <option value="OF DE OPERAÇÕES">OF DE OPERAÇÕES</option>
+                            <option value="OF. DE ADM/FINANÇAS">OF. DE ADM/FINANÇAS</option>
+                            <option value="AUX. DE ADM/FINANÇAS">AUX. DE ADM/FINANÇAS</option>
+                            <option value="OPER. DRONE">OPER. DRONE</option>
+                            <option value="OF. DE INFORMAÇÃO">OF. DE INFORMAÇÃO</option>
+                            <option value="MOP 1 (MOTO)">MOP 1 (MOTO)</option>
+                            <option value="MOP 2 (MOTO)">MOP 2 (MOTO)</option>
+                            <option value="VAN">VAN</option>
+                            <option value="MICRO - ÔNIBUS">MICRO - ÔNIBUS</option>
                         </select>
+
                         <div class="row g-2 mb-3">
-                            <div class="col-6"><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="Qtd. Oficiais"></div>
-                            <div class="col-6"><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="Qtd. Praças"></div>
+                            <div class="col-6"><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="Oficiais"></div>
+                            <div class="col-6"><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="Praças"></div>
                         </div>
-                        <button onclick="adicionarOrdem()" class="btn btn-outline-danger w-100 fw-bold border-2 text-uppercase py-2">
-                            <i class="bi bi-plus-lg me-1"></i> Incluir na Lista
-                        </button>
+                        <button onclick="adicionarOrdem()" class="btn btn-dark w-100 fw-bold py-2 text-uppercase"><i class="bi bi-plus-lg me-2"></i> Incluir na Lista</button>
                     </div>
                 </div>
 
                 <div class="col-lg-8">
                     <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold m-0">Resumo da Solicitação Atual</h6>
-                            <span class="badge bg-danger rounded-pill px-3 py-2" id="contador-ordens">0 ITENS</span>
+                            <h6 class="fw-bold m-0 text-dark">Ordens Geradas (Rascunho)</h6>
+                            <span class="badge bg-danger rounded-pill" id="contador-ordens">0</span>
                         </div>
-                        <div class="bg-light rounded-3 p-2 mb-3 border" style="min-height: 120px; max-height: 300px; overflow-y: auto;">
-                            <table class="table table-sm table-borderless mb-0 small align-middle">
-                                <thead class="text-muted text-uppercase" style="font-size: 0.75rem;">
-                                    <tr><th class="ps-3">Unidade</th><th>Função</th><th class="text-center">Efetivo (Of/Pr)</th><th></th></tr>
-                                </thead>
-                                <tbody id="tabela-ordens-body"></tbody>
-                            </table>
+                        <div class="bg-light rounded p-2 mb-3 border" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-sm table-borderless mb-0 small align-middle"><tbody id="tabela-ordens-body"></tbody></table>
                         </div>
                         <div class="d-flex justify-content-end gap-2">
-                            <button onclick="limparOrdens()" class="btn btn-light text-muted fw-bold">Limpar Tudo</button>
-                            <button onclick="dispararSolicitacao()" class="btn btn-imposing py-2 px-4">
-                                <i class="bi bi-send-fill me-2"></i> DISPARAR MISSÃO
-                            </button>
+                            <button onclick="limparOrdens()" class="btn btn-light fw-bold text-muted">Limpar</button>
+                            <button onclick="dispararSolicitacao()" class="btn btn-imposing px-4 fw-bold shadow-sm"><i class="bi bi-send-fill me-2"></i> DISPARAR MISSÃO</button>
                         </div>
                     </div>
 
                     <div class="bg-white p-4 rounded-4 shadow-sm border">
-                        <h6 class="fw-bold mb-3 text-secondary text-uppercase ls-1"><i class="bi bi-clock-history me-2"></i>Histórico de Operações</h6>
+                        <h6 class="fw-bold mb-3 text-secondary text-uppercase ls-1"><i class="bi bi-clock-history me-2"></i>Histórico de Missões</h6>
                         <div id="lista-eventos-admin" class="list-group list-group-flush"></div>
                     </div>
                 </div>
@@ -297,69 +264,45 @@
         </div>
 
         <div id="unidade-area" style="display: none;">
-            <h4 class="fw-black mb-4 ps-3 border-start border-danger border-4">Missões Pendentes da Unidade</h4>
+            <h4 class="fw-black mb-4 ps-3 border-start border-danger border-4">Missões Pendentes</h4>
             <div id="lista-unidade" class="row g-4"></div>
             
-            <div id="form-militar" style="display:none;" class="bg-white p-5 mt-5 rounded-5 shadow-lg border position-relative animate-in">
-                <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-4 p-2 bg-light rounded-circle"></button>
-                <div class="text-center mb-5">
-                    <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill">PREENCHIMENTO DE ESCALA</span>
-                    <h3 id="titulo-evento-form" class="fw-black mb-1">...</h3>
+            <div id="form-militar" style="display:none;" class="bg-white p-4 mt-5 rounded-4 shadow-lg border position-relative animate-in">
+                <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-4"></button>
+                <div class="text-center mb-4">
+                    <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill">PREENCHIMENTO DE ESCALA</span>
+                    <h3 id="titulo-evento-form" class="fw-black text-dark mb-1">...</h3>
                     <p id="subtitulo-form" class="text-muted fw-bold fs-5">...</p>
                 </div>
-                <div id="container-inputs-militares" class="mb-5"></div>
+                <div id="container-inputs-militares" class="mb-4"></div>
                 <div class="row">
                     <div class="col-md-8 offset-md-2">
-                        <button onclick="salvarEscala()" class="btn btn-success w-100 py-3 fw-bold rounded-4 fs-5 shadow-sm hover-scale">
-                            <i class="bi bi-check2-circle me-2"></i> ENVIAR ESCALA DEFINITIVA
-                        </button>
+                        <button onclick="salvarEscala()" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm fs-5"><i class="bi bi-check-circle-fill me-2"></i> ENVIAR ESCALA DEFINITIVA</button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-4" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000;">
-        <div class="bg-white p-4 rounded-4 w-100 shadow-lg animate-in" style="max-width: 950px;">
-            <div class="d-flex justify-content-between mb-3 border-bottom pb-3 align-items-center">
-                <h5 class="fw-bold m-0 text-danger"><i class="bi bi-table me-2"></i>Visualização da Escala</h5>
-                <button onclick="fecharPreview()" class="btn-close bg-light p-2 rounded-circle"></button>
+    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);">
+        <div class="bg-white p-4 rounded-4 w-100 shadow-lg animate-in" style="max-width: 900px;">
+            <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+                <h5 class="fw-bold m-0 text-danger"><i class="bi bi-table me-2"></i>Visualizar Escala Unificada</h5>
+                <button onclick="fecharPreview()" class="btn-close"></button>
             </div>
-            <div class="bg-light p-3 rounded-3 border mb-3 d-flex justify-content-between align-items-center">
-                 <h4 class="fw-bold text-dark mb-0" id="preview-titulo"></h4>
-                 <span class="badge bg-white text-dark border p-2"><span id="preview-data"></span> • <span id="preview-horario"></span></span>
+            <div class="alert alert-light border mb-3"><h4 class="fw-bold text-dark mb-0 text-center" id="preview-titulo">...</h4></div>
+            <div class="table-responsive border rounded mb-3 bg-white" style="max-height: 450px;">
+                <table class="table table-hover table-striped mb-0 align-middle"><thead class="table-dark small text-uppercase"><tr><th>#</th><th>Posto</th><th>Nome de Guerra</th><th>Contato</th><th>Unidade</th><th>Função</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
             </div>
-            <div class="table-responsive border rounded-3 mb-3 bg-white" style="max-height: 500px;">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-dark text-uppercase small sticky-top">
-                        <tr><th>#</th><th>Posto/Grad.</th><th>Nome de Guerra</th><th>Contato (Zap)</th><th>Unidade</th><th>Função Prevista</th></tr>
-                    </thead>
-                    <tbody id="tabela-preview-corpo" class="fw-bold text-secondary"></tbody>
-                </table>
-            </div>
-            <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 py-3 fw-bold rounded-3 text-uppercase ls-1">
-                <i class="bi bi-file-earmark-spreadsheet-fill me-2 fs-5"></i> Baixar Planilha Excel (Padrão)
-            </button>
+            <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 py-3 fw-bold rounded-3 text-uppercase"><i class="bi bi-file-earmark-spreadsheet-fill me-2"></i> Baixar Planilha Excel</button>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
     <script>
-        // Funções de UI e exposição do módulo
-        window.alternarTela = (t) => { 
-            document.getElementById('login-form').style.display = t==='login'?'block':'none'; 
-            document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none';
-            document.getElementById('msg-erro').innerText = "";
-        };
-        window.toggleSenha = () => { 
-            const i = document.getElementById('senha-login'); const ic = document.getElementById('icone-senha');
-            i.type = i.type==='password'?'text':'password'; 
-            ic.classList.toggle('bi-eye-slash-fill'); ic.classList.toggle('bi-eye-fill'); ic.classList.toggle('text-primary');
-        };
+        window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
-        
-        // Conecta as funções do app.js ao escopo global
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','salvarEscala','abrirPreview','baixarExcelDoEvento','excluirEvento'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>
