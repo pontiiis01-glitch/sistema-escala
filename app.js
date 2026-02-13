@@ -20,21 +20,20 @@ const FUNCOES_TATICAS = [
 let usuarioAtual = null;
 let perfilAtual = null;
 let escalaSelecionadaId = null;
-let eventoPreviewAtual = null; // {nome, data}
+let eventoPreviewAtual = null; 
 let listaOrdensTemporaria = [];
 let dadosParaEnvio = null;
-let idEdicaoAdmin = null; // Para armazenar qual ID estamos editando no admin
+let idEdicaoAdmin = null; 
 
 // === INICIALIZAÇÃO ===
-document.addEventListener('DOMContentLoaded', () => {
-    popularSelects();
-});
+// Executa assim que o script carrega para garantir que os selects existam
+setTimeout(popularSelects, 500);
 
 function popularSelects() {
     // Select Cadastro
     const selCadastro = document.getElementById('unidade-cadastro');
-    if(selCadastro) {
-        selCadastro.innerHTML = "<option value=''>Selecione...</option>";
+    if(selCadastro && selCadastro.options.length <= 1) {
+        selCadastro.innerHTML = "<option value=''>Selecione a Unidade...</option>";
         UNIDADES_CBMMA.forEach(u => selCadastro.innerHTML += `<option value="${u}">${u}</option>`);
     }
 
@@ -61,6 +60,9 @@ export async function fazerLogin() {
     const senha = document.getElementById('senha-login').value;
     const btn = document.querySelector('button[onclick="fazerLogin()"]');
     const textoOriginal = btn.innerHTML;
+    
+    if(!email || !senha) return alert("Preencha email e senha");
+
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Acessando...';
     btn.disabled = true;
 
@@ -70,7 +72,7 @@ export async function fazerLogin() {
     } 
     catch (e) { 
         console.error(e); 
-        document.getElementById('msg-erro').innerText = "Acesso negado. Verifique credenciais.";
+        document.getElementById('msg-erro').innerText = "Credenciais inválidas ou erro de conexão.";
         btn.innerHTML = textoOriginal; btn.disabled = false;
     }
 }
@@ -79,7 +81,9 @@ export async function fazerCadastro() {
     const email = document.getElementById('email-cadastro').value;
     const senha = document.getElementById('senha-cadastro').value;
     const unidade = document.getElementById('unidade-cadastro').value;
+    
     if(!email || !senha || !unidade) return alert("Preencha todos os campos.");
+    
     try {
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         await setDoc(doc(db, "usuarios", cred.user.uid), { email, unidade: unidade.toUpperCase(), funcao: "escalante" });
@@ -95,18 +99,29 @@ onAuthStateChanged(auth, async (user) => {
         const snap = await getDoc(doc(db, "usuarios", user.uid));
         if (snap.exists()) {
             perfilAtual = snap.data();
-            document.getElementById('login-area-wrapper').style.display = 'none';
-            document.getElementById('dashboard-screen').style.display = 'block';
-            setTimeout(() => document.getElementById('dashboard-screen').classList.add('visible'), 50);
-            document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
             
-            if (perfilAtual.funcao === 'admin') {
-                document.getElementById('admin-area').style.display = 'block';
-                carregarEventosAdmin();
-            } else {
-                document.getElementById('unidade-area').style.display = 'block';
-                carregarPendenciasUnidade();
-            }
+            // Transição Suave
+            const loginArea = document.getElementById('login-area-wrapper');
+            loginArea.style.transition = 'opacity 0.3s';
+            loginArea.style.opacity = '0';
+            
+            setTimeout(() => {
+                loginArea.style.display = 'none';
+                const dash = document.getElementById('dashboard-screen');
+                dash.style.display = 'block';
+                setTimeout(() => dash.classList.add('visible'), 50);
+                
+                document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
+                popularSelects(); // Reforça o preenchimento dos selects
+
+                if (perfilAtual.funcao === 'admin') {
+                    document.getElementById('admin-area').style.display = 'block';
+                    carregarEventosAdmin();
+                } else {
+                    document.getElementById('unidade-area').style.display = 'block';
+                    carregarPendenciasUnidade();
+                }
+            }, 300);
         }
     }
 });
@@ -234,7 +249,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             const cota = d.cota || {oficial: 0, praca: 0};
 
-            // Botões de Ação
             const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca})" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
@@ -334,7 +348,9 @@ async function carregarPendenciasUnidade() {
         docs.sort((a,b) => new Date(a.data) - new Date(b.data));
 
         docs.forEach(d => {
+            // *** CORREÇÃO DO ERRO DE LEITURA ***
             const cota = d.cota || { oficial: 0, praca: 0 }; 
+            
             const isPendente = d.status === "Pendente";
             let isBloqueado = false;
             let textoPrazo = "";
@@ -385,8 +401,12 @@ export async function abrirEdicao(id) {
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
 
     let contador = 0;
-    for(let i=0; i < parseInt(cota.oficial); i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
-    for(let i=0; i < parseInt(cota.praca); i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
+    // Garante que é número para evitar erro de loop
+    const qtdOf = parseInt(cota.oficial) || 0;
+    const qtdPc = parseInt(cota.praca) || 0;
+
+    for(let i=0; i < qtdOf; i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
+    for(let i=0; i < qtdPc; i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
 
     document.getElementById('form-militar-modal').classList.remove('d-none');
 }
@@ -443,18 +463,22 @@ function gerarReciboPDFProfissional(listaMilitares) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
-    // ... Código PDF mantido (é padrão) ...
+    
+    doc.setLineWidth(0.5); doc.rect(5, 5, 200, 287);
     doc.setFillColor(153, 0, 0); doc.rect(5, 5, 200, 25, 'F');
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
     doc.text("RECIBO DE ENVIO - CBMMA", 105, 18, null, null, "center");
+    
     doc.setTextColor(0, 0, 0); doc.setFontSize(11);
     doc.text(`UNIDADE: ${perfilAtual.unidade}`, 15, 40);
     doc.text(`EVENTO: ${tituloEvento}`, 15, 46);
     doc.text(`DATA: ${new Date().toLocaleString()}`, 15, 52);
+    
     let y = 65;
     doc.setFillColor(230, 230, 230); doc.rect(15, 60, 180, 8, 'F');
     doc.setFontSize(9); doc.setFont("helvetica", "bold");
     doc.text("POSTO", 20, 65); doc.text("GUERRA", 50, 65); doc.text("NOME", 90, 65); doc.text("CONTATO", 160, 65);
+
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
         if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); }
@@ -464,7 +488,6 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL PROFISSIONAL REFEITO ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -473,7 +496,6 @@ export async function baixarExcelDoEvento() {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
 
-        // --- CABEÇALHO PERSONALIZADO ---
         worksheet.mergeCells('A1:F1');
         worksheet.getCell('A1').value = "COMANDO OPERACIONAL METROPOLITANO - CBMMA";
         worksheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
@@ -488,14 +510,7 @@ export async function baixarExcelDoEvento() {
         worksheet.getRow(4).values = ['ORD', 'POSTO/GRAD - NOME DE GUERRA', 'NOME COMPLETO', 'CONTATO', 'UNIDADE', 'FUNÇÃO'];
         worksheet.getRow(4).font = { bold: true };
         worksheet.getRow(4).alignment = { horizontal: 'center' };
-        worksheet.columns = [
-            { key: 'ord', width: 8 },
-            { key: 'guerra', width: 40 },
-            { key: 'nome', width: 40 },
-            { key: 'contato', width: 15 },
-            { key: 'unidade', width: 15 },
-            { key: 'funcao', width: 20 }
-        ];
+        worksheet.columns = [{ key: 'ord', width: 8 }, { key: 'guerra', width: 40 }, { key: 'nome', width: 40 }, { key: 'contato', width: 15 }, { key: 'unidade', width: 15 }, { key: 'funcao', width: 20 }];
 
         let contador = 1;
         snapshot.forEach(docSnap => {
@@ -505,17 +520,12 @@ export async function baixarExcelDoEvento() {
 
             militares.forEach(m => {
                 const row = worksheet.addRow({
-                    ord: contador++,
-                    guerra: `${m.posto} ${m.guerra.toUpperCase()}`, // Posto + Guerra
-                    nome: m.nome.toUpperCase(),
-                    contato: m.contato,
-                    unidade: d.unidade,
-                    funcao: d.funcao
+                    ord: contador++, guerra: `${m.posto} ${m.guerra.toUpperCase()}`,
+                    nome: m.nome.toUpperCase(), contato: m.contato, unidade: d.unidade, funcao: d.funcao
                 });
-                // Formatação: Negrito apenas na coluna de Guerra
                 row.getCell('guerra').font = { bold: true };
                 row.alignment = { vertical: 'middle', horizontal: 'center' };
-                row.getCell('guerra').alignment = { vertical: 'middle', horizontal: 'left' }; // Guerra alinhado a esquerda
+                row.getCell('guerra').alignment = { vertical: 'middle', horizontal: 'left' };
                 row.getCell('nome').alignment = { vertical: 'middle', horizontal: 'left' };
             });
         });
@@ -525,5 +535,4 @@ export async function baixarExcelDoEvento() {
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
-// Exporta tudo
 window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin };

@@ -1,4 +1,3 @@
-// firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
     getAuth, 
@@ -21,7 +20,8 @@ import {
     getDocs, 
     updateDoc, 
     orderBy, 
-    deleteDoc // <--- Garantindo que ele é importado aqui
+    deleteDoc,
+    writeBatch // <--- ADICIONADO AQUI
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -38,9 +38,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Exportação unificada (Corrigindo o erro de export missing)
+// Exportação corrigida incluindo writeBatch
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
-    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc 
+    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch 
 };

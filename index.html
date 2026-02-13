@@ -17,78 +17,100 @@
         :root {
             --cbm-red: #b30000;       
             --cbm-gold: #FFD700;      
-            --tactical-black: #1c1c1e; 
-            --bg-app: #f2f2f7; 
+            --tactical-black: #1c1c1e; /* Preto iOS Dark Mode */
+            --bg-app: #f2f2f7; /* Cinza claro iOS */
         }
 
         body {
             background-color: var(--bg-app);
-            font-family: 'Inter', sans-serif;
-            min-height: 100dvh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100dvh; /* Usa dynamic viewport height */
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
         }
 
-        /* --- ANIMAÇÕES --- */
-        .animate-up { animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .ios-click:active { transform: scale(0.96); transition: transform 0.1s; }
+        /* --- ANIMAÇÕES IOS --- */
+        .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- HEADER --- */
+        .ios-click:active { transform: scale(0.96); transition: transform 0.1s; }
+        
+        /* --- HEADER (Camada Inferior) --- */
         .header-tactical {
             background: linear-gradient(180deg, #000000 0%, var(--cbm-red) 140%);
             padding: 4rem 1rem 6rem 1rem; 
-            position: relative; z-index: 1;
+            position: relative;
+            z-index: 1; /* Força camada inferior */
             text-align: center;
             border-bottom: 4px solid var(--cbm-gold);
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
+
         .brasao-central {
             width: 140px; height: 140px; object-fit: contain;
             filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.5));
             margin-bottom: 1rem;
+            animation: pulseBrasao 3s infinite ease-in-out;
         }
+        @keyframes pulseBrasao { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
         .system-title {
             color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 1.5rem;
             text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 0.5rem;
         }
 
-        /* --- MAIN --- */
-        .main-container { margin-top: -50px; position: relative; z-index: 999; padding-bottom: 4rem; flex: 1; }
+        /* --- MAIN CONTAINER (Camada Superior) --- */
+        .main-container { 
+            margin-top: -50px; /* Sobe por cima do header */
+            position: relative; 
+            z-index: 999; /* GARANTE QUE FIQUE NA FRENTE DE TUDO */
+            padding-bottom: 4rem; 
+            flex: 1;
+        }
+
+        /* --- CARD DE LOGIN --- */
         .card-glass {
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px);
-            border-radius: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            background: rgba(255, 255, 255, 0.92); /* Mais sólido para leitura */
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border-radius: 28px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
             border: 1px solid rgba(255,255,255,0.6);
+            overflow: hidden; /* Mantém tudo dentro das bordas arredondadas */
         }
 
-        /* --- INPUTS & BUTTONS --- */
+        /* --- INPUTS ESTILO IPHONE --- */
         .form-control, .form-select {
-            background-color: #e9e9eb; border: none; border-radius: 12px; padding: 14px 15px;
-            color: #1c1c1e; font-weight: 600;
+            background-color: #e9e9eb; /* Cinza campo input iOS */
+            border: none; border-radius: 12px; padding: 14px 15px; font-size: 1rem;
+            color: #1c1c1e; transition: all 0.2s;
         }
-        .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 3px rgba(179,0,0,0.15); outline: none; }
-        .form-label-custom { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #8e8e93; margin-left: 8px; margin-bottom: 4px; display: block; }
+        .form-control:focus, .form-select:focus {
+            background-color: #fff; box-shadow: 0 0 0 3px rgba(179,0,0,0.15); outline: none; transform: scale(1.01);
+        }
+        .form-label-custom { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #8e8e93; margin-left: 8px; margin-bottom: 6px; display: block; }
 
+        /* --- BOTÕES --- */
         .btn-tactical {
             background: linear-gradient(135deg, #b30000 0%, #800000 100%);
-            color: white; font-weight: 700; border-radius: 14px; padding: 14px; border: none;
-            box-shadow: 0 8px 20px rgba(179, 0, 0, 0.25);
+            color: white; font-weight: 700; border-radius: 14px;
+            padding: 14px; font-size: 1rem; letter-spacing: 0.5px; border: none;
+            box-shadow: 0 8px 20px rgba(179, 0, 0, 0.25); transition: all 0.2s;
         }
+        .btn-tactical:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(179, 0, 0, 0.35); filter: brightness(1.1); }
+        .btn-tactical:active { transform: scale(0.98); }
 
+        /* --- DASHBOARD ELEMENTS --- */
         .welcome-bar {
-            background: #1c1c1e; color: white; border-radius: 22px; padding: 1.5rem;
-            display: flex; justify-content: space-between; align-items: center;
+            background: #1c1c1e; color: white; border-radius: 22px;
+            padding: 1.5rem; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-left: 6px solid var(--cbm-gold);
             margin-bottom: 2rem;
         }
         
-        /* Créditos Footer */
-        .credits-footer {
-            text-align: center; font-size: 0.65rem; color: #888; 
-            margin-top: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-        }
+        .mission-card { transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); border: none; }
+        .mission-card:hover { transform: translateY(-8px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
 
         /* Modal Overlay Full */
         .modal-overlay-custom {
@@ -103,7 +125,21 @@
         }
         @keyframes slideUpModal { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        #dashboard-screen { display: none; }
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .header-tactical { padding-bottom: 4rem; padding-top: 3rem; }
+            .main-container { margin-top: -40px; padding-left: 1rem; padding-right: 1rem; }
+            .card-glass { padding: 1.5rem !important; }
+            .system-title { font-size: 1.2rem; }
+        }
+
+        #dashboard-screen { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #dashboard-screen.visible { opacity: 1; }
+
+        .credits-footer {
+            text-align: center; font-size: 0.65rem; color: #888; 
+            margin-top: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -112,7 +148,7 @@
         <div class="container d-flex flex-column align-items-center animate-up">
             <img src="brasao_unidade.png" class="brasao-central" alt="Brasão">
             <h1 class="system-title">Comando Operacional Metropolitano</h1>
-            <p class="text-white-50 fw-bold small text-uppercase" style="letter-spacing: 2px; font-size: 0.7rem;">Sistema Integrado de Escalas</p>
+            <p class="text-white-50 fw-bold small text-uppercase letter-spacing-2" style="font-size: 0.7rem;">Sistema Integrado de Escalas</p>
         </div>
     </header>
 
@@ -121,22 +157,38 @@
         <div id="login-area-wrapper" class="row justify-content-center">
             <div class="col-md-6 col-lg-4">
                 <div class="card-glass p-4 animate-up" style="animation-delay: 0.1s;">
+                    
                     <div id="login-form">
-                        <div class="text-center mb-4 mt-2"><h5 class="fw-black text-dark m-0">IDENTIFICAÇÃO</h5></div>
+                        <div class="text-center mb-4 mt-2">
+                            <h5 class="fw-black text-dark m-0 ls-1">IDENTIFICAÇÃO</h5>
+                        </div>
+                        
                         <div class="mb-3">
                             <label class="form-label-custom">Email Oficial</label>
-                            <input type="email" id="email-login" class="form-control" placeholder="cbm@ma.gov.br">
+                            <div class="position-relative">
+                                <input type="email" id="email-login" class="form-control" placeholder="exemplo@cbm.ma.gov.br">
+                                <i class="bi bi-envelope-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                            </div>
                         </div>
+                        
                         <div class="mb-4">
                             <label class="form-label-custom">Senha</label>
                             <div class="position-relative">
                                 <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
-                                <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted ios-click" style="cursor: pointer; padding:10px" onclick="toggleSenha('senha-login', this)"></i>
+                                <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted ios-click" 
+                                   style="cursor: pointer; padding: 10px;"
+                                   onclick="toggleSenha('senha-login', this)"></i>
                             </div>
                         </div>
-                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 mb-3 fw-bold text-uppercase">Acessar Sistema</button>
+                        
+                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 mb-3 fw-bold text-uppercase shadow-sm">
+                            Acessar Sistema
+                        </button>
+                        
                         <div class="text-center pt-2">
-                            <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small fw-bold text-muted ios-click">Solicitar acesso à unidade <i class="bi bi-arrow-right-short"></i></a>
+                            <a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small fw-bold text-muted ios-click" style="display: inline-block; padding: 10px;">
+                                Solicitar acesso à unidade <i class="bi bi-arrow-right-short"></i>
+                            </a>
                         </div>
                         <div class="credits-footer">
                             Pensado por Ten QOCBM Elenilton<br>
@@ -145,34 +197,49 @@
                     </div>
 
                     <div id="cadastro-form" style="display: none;">
-                        <div class="text-center mb-4"><h5 class="fw-black text-danger m-0">NOVA UNIDADE</h5></div>
+                        <div class="text-center mb-4">
+                            <h5 class="fw-black text-danger m-0">NOVA UNIDADE</h5>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label-custom">Selecione a Unidade</label>
                             <select id="unidade-cadastro" class="form-select fw-bold"></select>
                         </div>
-                        <div class="mb-3"><label class="form-label-custom">Email</label><input type="email" id="email-cadastro" class="form-control"></div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-custom">Email Institucional</label>
+                            <input type="email" id="email-cadastro" class="form-control">
+                        </div>
+                        
                         <div class="mb-4">
-                            <label class="form-label-custom">Senha</label>
+                            <label class="form-label-custom">Criar Senha</label>
                             <div class="position-relative">
-                                <input type="password" id="senha-cadastro" class="form-control">
-                                <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted ios-click" style="cursor: pointer; padding:10px" onclick="toggleSenha('senha-cadastro', this)"></i>
+                                <input type="password" id="senha-cadastro" class="form-control" placeholder="Mínimo 6 caracteres">
+                                <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted ios-click" 
+                                   style="cursor: pointer; padding: 10px;"
+                                   onclick="toggleSenha('senha-cadastro', this)"></i>
                             </div>
                         </div>
-                        <button onclick="fazerCadastro()" class="btn btn-dark w-100 mb-2 py-3 fw-bold rounded-4 ios-click">Confirmar</button>
+                        
+                        <button onclick="fazerCadastro()" class="btn btn-dark w-100 mb-2 py-3 fw-bold rounded-4 ios-click">Confirmar Cadastro</button>
                         <button onclick="alternarTela('login')" class="btn btn-light w-100 py-3 fw-bold text-muted rounded-4 ios-click">Cancelar</button>
                     </div>
+                    
                     <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
                 </div>
             </div>
         </div>
 
         <div id="dashboard-screen">
+            
             <div class="welcome-bar animate-up">
                 <div>
-                    <div class="small text-white-50 fw-bold text-uppercase" style="font-size: 0.65rem;">Unidade Conectada</div>
+                    <div class="small text-white-50 fw-bold text-uppercase ls-1" style="font-size: 0.65rem;">Unidade Conectada</div>
                     <h2 id="titulo-unidade" class="m-0 fw-black text-warning text-uppercase" style="font-size: 1.5rem;">...</h2>
                 </div>
-                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2">SAIR <i class="bi bi-box-arrow-right ms-1"></i></button>
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2" style="font-size: 0.75rem;">
+                    SAIR <i class="bi bi-box-arrow-right ms-1"></i>
+                </button>
             </div>
 
             <div id="admin-area" style="display: none;">
@@ -181,14 +248,22 @@
                         <div class="bg-white p-4 rounded-4 shadow-sm h-100 animate-up border-top border-4 border-danger">
                             <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão</h6>
                             
-                            <div class="mb-3"><label class="form-label-custom">Operação / Evento</label><input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME"></div>
-                            <div class="mb-3"><label class="form-label-custom">Data</label><input type="date" id="data-evento" class="form-control"></div>
+                            <div class="mb-3">
+                                <label class="form-label-custom">Operação / Evento</label>
+                                <input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME">
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-12"><label class="form-label-custom">Data</label><input type="date" id="data-evento" class="form-control"></div>
+                            </div>
+                            
                             <div class="bg-light p-3 rounded-4 mb-3 border">
                                 <div class="row g-2">
                                     <div class="col-6"><label class="form-label-custom">Início</label><input type="time" id="hora-inicio" class="form-control"></div>
                                     <div class="col-6"><label class="form-label-custom">Fim</label><input type="time" id="hora-fim" class="form-control"></div>
                                 </div>
                             </div>
+                            
                             <div class="p-3 border border-danger bg-danger bg-opacity-10 rounded-4 mb-4">
                                 <label class="form-label-custom text-danger">Prazo Limite</label>
                                 <div class="row g-2">
@@ -196,12 +271,18 @@
                                     <div class="col-5"><input type="time" id="prazo-hora" class="form-control border-0 fw-bold text-danger"></div>
                                 </div>
                             </div>
-                            <hr class="opacity-25">
-                            <div class="mb-2"><label class="form-label-custom">Unidade Destino</label><select id="select-unidade" class="form-select fw-bold"></select></div>
+
+                            <hr class="text-muted opacity-25">
+
+                            <div class="mb-2">
+                                <label class="form-label-custom">Unidade Destino</label>
+                                <select id="select-unidade" class="form-select fw-bold"></select>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label-custom">Função Tática</label>
                                 <select id="select-funcao" class="form-select text-uppercase"></select>
                             </div>
+                            
                             <div class="row g-2 mb-4">
                                 <div class="col-6"><label class="form-label-custom text-center">Oficiais</label><input type="number" id="input-oficiais" class="form-control text-center fw-bold fs-5" placeholder="0"></div>
                                 <div class="col-6"><label class="form-label-custom text-center">Praças</label><input type="number" id="input-pracas" class="form-control text-center fw-bold fs-5" placeholder="0"></div>
@@ -214,7 +295,7 @@
                         <div class="bg-white p-4 rounded-4 shadow-sm mb-4 animate-up">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="fw-bold m-0 text-uppercase text-muted">Rascunho (<span id="contador-ordens" class="text-dark">0</span>)</h6>
-                                <button onclick="limparOrdens()" class="btn btn-sm btn-light fw-bold text-danger">Limpar</button>
+                                <button onclick="limparOrdens()" class="btn btn-sm btn-light fw-bold text-danger">Limpar Tudo</button>
                             </div>
                             <div class="bg-light rounded-4 p-3 mb-3 border-0" style="min-height: 100px; max-height: 300px; overflow-y: auto;">
                                 <table class="table table-borderless mb-0 small"><tbody id="tabela-ordens-body"></tbody></table>
@@ -234,103 +315,104 @@
                 <h5 class="fw-black mb-4 ps-2 border-start border-4 border-danger text-uppercase">Missões Pendentes</h5>
                 <div id="lista-unidade" class="row g-4"></div>
             </div>
+
+            <div id="modal-editar-admin" class="modal-overlay-custom d-none">
+                <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
+                    <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Editar Solicitação</h5><p class="text-muted small" id="edit-admin-subtitle">...</p></div>
+                    <div class="mb-3"><label class="form-label-custom">Nova Função</label><select id="edit-admin-funcao" class="form-select text-uppercase"></select></div>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6"><label class="form-label-custom">Oficiais</label><input type="number" id="edit-admin-of" class="form-control text-center fw-bold"></div>
+                        <div class="col-6"><label class="form-label-custom">Praças</label><input type="number" id="edit-admin-pc" class="form-control text-center fw-bold"></div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button onclick="document.getElementById('modal-editar-admin').classList.add('d-none')" class="btn btn-light w-50 fw-bold rounded-3">Cancelar</button>
+                        <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3">Salvar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="form-militar-modal" class="modal-overlay-custom d-none">
+                <div class="modal-content-custom">
+                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold m-0 text-uppercase text-danger"><i class="bi bi-pencil-fill me-2"></i>Preenchimento</h6>
+                        <button onclick="fecharEdicao()" class="btn-close"></button>
+                    </div>
+                    <div class="p-4 text-center border-bottom">
+                        <h3 id="titulo-evento-form" class="fw-black m-0 text-uppercase">...</h3>
+                        <p id="subtitulo-form" class="text-muted fw-bold mt-1 mb-0">...</p>
+                    </div>
+                    <div id="container-inputs-militares" class="p-4 flex-grow-1 overflow-auto bg-light"></div>
+                    <div class="p-3 border-top bg-white">
+                        <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click fs-5 text-uppercase shadow-sm">
+                            <i class="bi bi-check-lg me-2"></i> Conferir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="preview-modal" class="modal-overlay-custom d-none">
+                <div class="modal-content-custom">
+                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold m-0 text-uppercase text-muted"><i class="bi bi-eye-fill me-2"></i>Painel do Evento</h6>
+                        <button onclick="fecharPreview()" class="btn-close"></button>
+                    </div>
+                    <div class="p-4 text-center bg-white border-bottom">
+                        <h4 class="fw-black m-0 text-uppercase text-dark" id="preview-titulo">...</h4>
+                        <div class="mt-2">
+                            <button onclick="excluirEventoCompleto()" class="btn btn-outline-danger btn-sm rounded-pill fw-bold"><i class="bi bi-trash-fill me-1"></i> APAGAR HISTÓRICO</button>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 overflow-auto p-3 bg-white">
+                        <table class="table table-striped align-middle"><thead class="table-dark small text-uppercase"><tr><th class="text-center">#</th><th>Militar</th><th>Contato</th><th>Unidade</th><th>Função</th><th class="text-end">Ações</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
+                    </div>
+                    <div class="p-3 bg-light border-top">
+                        <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 fw-bold py-3 rounded-4 ios-click text-uppercase"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Baixar Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="recibo-modal" class="modal-overlay-custom d-none">
+                <div class="modal-content-custom p-0" style="max-width: 600px; height: auto;">
+                    <div class="bg-success text-white p-4 text-center">
+                        <i class="bi bi-shield-check display-3 mb-2"></i>
+                        <h4 class="fw-bold m-0">CONFIRMAÇÃO</h4>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-center text-muted fw-bold small mb-4 text-uppercase">Confira os dados antes de gerar o recibo.</p>
+                        <div class="bg-light p-3 rounded-4 mb-4 border">
+                            <div class="d-flex justify-content-between mb-2 border-bottom pb-2"><span class="fw-bold text-muted small text-uppercase">Evento</span> <span id="recibo-evento" class="fw-bold text-dark"></span></div>
+                            <div class="d-flex justify-content-between"><span class="fw-bold text-muted small text-uppercase">Unidade</span> <span id="recibo-unidade" class="fw-bold text-dark"></span></div>
+                            <div class="table-responsive mt-3" style="max-height: 200px;">
+                                <table class="table table-sm table-borderless small mb-0 text-muted"><tbody id="recibo-lista-corpo"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-light w-100 py-3 fw-bold rounded-4 text-muted border">Voltar</button></div>
+                            <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click shadow-sm">Enviar</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 
-    <div id="modal-editar-admin" class="modal-overlay-custom d-none">
-        <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
-            <div class="text-center mb-3">
-                <h5 class="fw-black text-uppercase">Editar Solicitação</h5>
-                <p class="text-muted small" id="edit-admin-subtitle">...</p>
-            </div>
-            <div class="mb-3">
-                <label class="form-label-custom">Nova Função</label>
-                <select id="edit-admin-funcao" class="form-select text-uppercase"></select>
-            </div>
-            <div class="row g-2 mb-4">
-                <div class="col-6"><label class="form-label-custom">Qtd Oficiais</label><input type="number" id="edit-admin-of" class="form-control text-center fw-bold"></div>
-                <div class="col-6"><label class="form-label-custom">Qtd Praças</label><input type="number" id="edit-admin-pc" class="form-control text-center fw-bold"></div>
-            </div>
-            <div class="d-flex gap-2">
-                <button onclick="document.getElementById('modal-editar-admin').classList.add('d-none')" class="btn btn-light w-50 fw-bold">Cancelar</button>
-                <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold">Salvar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="form-militar-modal" class="modal-overlay-custom d-none">
-        <div class="modal-content-custom">
-            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold m-0 text-uppercase text-danger"><i class="bi bi-pencil-fill me-2"></i>Preenchimento de Escala</h6>
-                <button onclick="fecharEdicao()" class="btn-close"></button>
-            </div>
-            <div class="p-4 text-center border-bottom">
-                <h3 id="titulo-evento-form" class="fw-black m-0 text-uppercase">...</h3>
-                <p id="subtitulo-form" class="text-muted fw-bold mt-1 mb-0">...</p>
-            </div>
-            <div id="container-inputs-militares" class="p-4 flex-grow-1 overflow-auto bg-light"></div>
-            <div class="p-3 border-top bg-white">
-                <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click fs-5 text-uppercase shadow-sm">
-                    <i class="bi bi-check-lg me-2"></i> Visualizar Recibo
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="preview-modal" class="modal-overlay-custom d-none">
-        <div class="modal-content-custom">
-            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold m-0 text-uppercase text-muted"><i class="bi bi-eye-fill me-2"></i>Painel do Evento</h6>
-                <button onclick="fecharPreview()" class="btn-close"></button>
-            </div>
-            <div class="p-4 text-center bg-white border-bottom">
-                <h4 class="fw-black m-0 text-uppercase text-dark" id="preview-titulo">...</h4>
-                <div class="mt-2">
-                    <button onclick="excluirEventoCompleto()" class="btn btn-outline-danger btn-sm rounded-pill fw-bold"><i class="bi bi-trash-fill me-1"></i> APAGAR HISTÓRICO DESTE EVENTO</button>
-                </div>
-            </div>
-            <div class="flex-grow-1 overflow-auto p-3 bg-white">
-                <table class="table table-striped align-middle"><thead class="table-dark small text-uppercase"><tr><th class="text-center">#</th><th>Militar</th><th>Contato</th><th>Unidade</th><th>Função</th><th class="text-end">Ações</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
-            </div>
-            <div class="p-3 bg-light border-top">
-                <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 fw-bold py-3 rounded-4 ios-click text-uppercase"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Baixar Excel (Padrão CBMMA)</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="recibo-modal" class="modal-overlay-custom d-none">
-        <div class="modal-content-custom p-0" style="max-width: 600px; height: auto;">
-            <div class="bg-success text-white p-4 text-center">
-                <i class="bi bi-shield-check display-3 mb-2"></i>
-                <h4 class="fw-bold m-0">CONFIRMAÇÃO</h4>
-            </div>
-            <div class="p-4">
-                <p class="text-center text-muted fw-bold small mb-4 text-uppercase">Verifique os dados antes de baixar o recibo oficial.</p>
-                <div class="bg-light p-3 rounded-4 mb-4 border">
-                    <div class="d-flex justify-content-between mb-2 border-bottom pb-2"><span class="fw-bold text-muted small text-uppercase">Evento</span> <span id="recibo-evento" class="fw-bold text-dark"></span></div>
-                    <div class="d-flex justify-content-between"><span class="fw-bold text-muted small text-uppercase">Unidade</span> <span id="recibo-unidade" class="fw-bold text-dark"></span></div>
-                    <div class="table-responsive mt-3" style="max-height: 200px;">
-                        <table class="table table-sm table-borderless small mb-0 text-muted"><tbody id="recibo-lista-corpo"></tbody></table>
-                    </div>
-                </div>
-                <div class="row g-2">
-                    <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-light w-100 py-3 fw-bold rounded-4 text-muted border">Voltar</button></div>
-                    <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click shadow-sm">Confirmar e Baixar</button></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script type="module" src="app.js"></script>
     <script>
+        // Toggle Senha com Ícone
         window.toggleSenha = (idInput, iconElement) => {
             const input = document.getElementById(idInput);
             if (input.type === 'password') {
-                input.type = 'text'; iconElement.classList.replace('bi-eye-slash-fill', 'bi-eye-fill'); iconElement.classList.add('text-primary');
+                input.type = 'text';
+                iconElement.classList.replace('bi-eye-slash-fill', 'bi-eye-fill');
+                iconElement.classList.add('text-primary');
             } else {
-                input.type = 'password'; iconElement.classList.replace('bi-eye-fill', 'bi-eye-slash-fill'); iconElement.classList.remove('text-primary');
+                input.type = 'password';
+                iconElement.classList.replace('bi-eye-fill', 'bi-eye-slash-fill');
+                iconElement.classList.remove('text-primary');
             }
         };
+
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharEdicao = () => document.getElementById('form-militar-modal').classList.add('d-none');
         window.fecharPreview = () => document.getElementById('preview-modal').classList.add('d-none');
