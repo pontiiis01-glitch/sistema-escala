@@ -21,7 +21,7 @@
 
         body {
             background-color: var(--bg-app);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             min-height: 100dvh;
             display: flex;
             flex-direction: column;
@@ -29,15 +29,18 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+        /* ANIMAÇÕES FLUÍDAS */
+        .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .ios-click:active { transform: scale(0.96); transition: transform 0.1s; }
+        
+        .ios-click { transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+        .ios-click:active { transform: scale(0.96); }
 
-        /* HEADER FLUIDO */
+        /* HEADER */
         .header-tactical {
             background: linear-gradient(180deg, #000000 0%, var(--cbm-red) 140%);
             padding: 4rem 1rem 6rem 1rem; 
-            position: relative; z-index: 0; /* Camada Base */
+            position: relative; z-index: 0;
             text-align: center;
             border-bottom: 4px solid var(--cbm-gold);
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
@@ -54,24 +57,20 @@
             text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 0.5rem;
         }
 
-        /* MAIN FLUIDO (OVERLAP) */
-        .main-container { 
-            margin-top: -60px; /* O Pulo do Gato para o Design Fluido */
-            position: relative; 
-            z-index: 10; /* Garante que fique acima do header */
-            padding-bottom: 4rem; 
-            flex: 1; 
-        }
+        /* MAIN (OVERLAP FLUIDO) */
+        .main-container { margin-top: -60px; position: relative; z-index: 10; padding-bottom: 4rem; flex: 1; }
         
         .card-glass {
             background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px);
             border-radius: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.25);
             border: 1px solid rgba(255,255,255,0.6); overflow: hidden;
+            transition: all 0.3s ease;
         }
 
+        /* UI ELEMENTS */
         .form-control, .form-select {
             background-color: #e9e9eb; border: none; border-radius: 12px; padding: 14px 15px;
-            font-weight: 600; color: #1c1c1e;
+            font-weight: 600; color: #1c1c1e; transition: background-color 0.2s, box-shadow 0.2s;
         }
         .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 3px rgba(179,0,0,0.15); outline: none; }
         .form-label-custom { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #8e8e93; margin-left: 8px; margin-bottom: 6px; display: block; }
@@ -81,20 +80,31 @@
             color: white; font-weight: 700; border-radius: 14px;
             padding: 14px; font-size: 1rem; border: none;
             box-shadow: 0 8px 20px rgba(179, 0, 0, 0.25);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .btn-tactical:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(179, 0, 0, 0.35); }
+
+        .mission-card { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s; border: none; }
+        .mission-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+
         .credits-footer { text-align: center; font-size: 0.65rem; color: #888; margin-top: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
+        /* MODAIS */
         .modal-overlay-custom {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2000;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000;
             display: flex; justify-content: center; align-items: center; padding: 1rem;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
+        .modal-overlay-custom.active { opacity: 1; pointer-events: all; }
+        
         .modal-content-custom {
             background: white; width: 100%; max-width: 900px; max-height: 90vh;
             border-radius: 24px; overflow: hidden; display: flex; flex-direction: column;
-            animation: slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(20px); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
         }
-        @keyframes slideUpModal { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-overlay-custom.active .modal-content-custom { transform: translateY(0); }
 
         #dashboard-screen { display: none; opacity: 0; transition: opacity 0.5s ease; }
         #dashboard-screen.visible { opacity: 1; }
@@ -126,7 +136,7 @@
                                 <i class="bi bi-eye-slash-fill position-absolute top-50 end-0 translate-middle-y me-3 text-muted ios-click" style="cursor: pointer; padding: 10px;" onclick="toggleSenha('senha-login', this)"></i>
                             </div>
                         </div>
-                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 mb-3 fw-bold text-uppercase shadow-sm">Acessar Sistema</button>
+                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 mb-3 fw-bold text-uppercase shadow-sm ios-click">Acessar Sistema</button>
                         <div class="text-center pt-2"><a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small fw-bold text-muted ios-click">Solicitar acesso à unidade <i class="bi bi-arrow-right-short"></i></a></div>
                         <div class="credits-footer">Pensado por Ten QOCBM Elenilton<br><span class="text-danger">Desenvolvido por Asp Of QPEBM Moreira</span></div>
                     </div>
@@ -159,7 +169,7 @@
                     <div class="small text-white-50 fw-bold text-uppercase" style="font-size: 0.65rem;">Unidade Conectada</div>
                     <h2 id="titulo-unidade" class="m-0 fw-black text-warning text-uppercase" style="font-size: 1.5rem;">...</h2>
                 </div>
-                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2" style="font-size: 0.75rem;">SAIR <i class="bi bi-box-arrow-right ms-1"></i></button>
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2 ios-click">SAIR <i class="bi bi-box-arrow-right ms-1"></i></button>
             </div>
 
             <div id="admin-area" style="display: none;">
@@ -197,7 +207,7 @@
                         <div class="bg-white p-4 rounded-4 shadow-sm mb-4 animate-up">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="fw-bold m-0 text-uppercase text-muted">Rascunho (<span id="contador-ordens" class="text-dark">0</span>)</h6>
-                                <button onclick="limparOrdens()" class="btn btn-sm btn-light fw-bold text-danger">Limpar</button>
+                                <button onclick="limparOrdens()" class="btn btn-sm btn-light fw-bold text-danger ios-click">Limpar</button>
                             </div>
                             <div class="bg-light rounded-4 p-3 mb-3 border-0" style="min-height: 100px; max-height: 300px; overflow-y: auto;">
                                 <table class="table table-borderless mb-0 small"><tbody id="tabela-ordens-body"></tbody></table>
@@ -219,26 +229,37 @@
         </div>
     </main>
 
-    <div id="modal-editar-admin" class="modal-overlay-custom d-none">
+    <div id="modal-editar-admin" class="modal-overlay-custom">
         <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
             <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Editar Solicitação</h5><p class="text-muted small" id="edit-admin-subtitle">...</p></div>
+            
             <div class="mb-3"><label class="form-label-custom">Nova Função</label><select id="edit-admin-funcao" class="form-select text-uppercase"></select></div>
-            <div class="row g-2 mb-4">
+            
+            <div class="row g-2 mb-3">
                 <div class="col-6"><label class="form-label-custom">Oficiais</label><input type="number" id="edit-admin-of" class="form-control text-center fw-bold"></div>
                 <div class="col-6"><label class="form-label-custom">Praças</label><input type="number" id="edit-admin-pc" class="form-control text-center fw-bold"></div>
             </div>
+
+            <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-4">
+                <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
+                <div class="row g-2">
+                    <div class="col-7"><input type="date" id="edit-admin-prazo-data" class="form-control border-0 fw-bold"></div>
+                    <div class="col-5"><input type="time" id="edit-admin-prazo-hora" class="form-control border-0 fw-bold"></div>
+                </div>
+            </div>
+
             <div class="d-flex gap-2">
-                <button onclick="document.getElementById('modal-editar-admin').classList.add('d-none')" class="btn btn-light w-50 fw-bold rounded-3">Cancelar</button>
-                <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3">Salvar</button>
+                <button onclick="fecharModal('modal-editar-admin')" class="btn btn-light w-50 fw-bold rounded-3 ios-click">Cancelar</button>
+                <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3 ios-click">Salvar</button>
             </div>
         </div>
     </div>
 
-    <div id="form-militar-modal" class="modal-overlay-custom d-none">
+    <div id="form-militar-modal" class="modal-overlay-custom">
         <div class="modal-content-custom">
             <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold m-0 text-uppercase text-danger"><i class="bi bi-pencil-fill me-2"></i>Preenchimento</h6>
-                <button onclick="fecharEdicao()" class="btn-close"></button>
+                <button onclick="fecharModal('form-militar-modal')" class="btn-close"></button>
             </div>
             <div class="p-4 text-center border-bottom">
                 <h3 id="titulo-evento-form" class="fw-black m-0 text-uppercase">...</h3>
@@ -251,15 +272,15 @@
         </div>
     </div>
 
-    <div id="preview-modal" class="modal-overlay-custom d-none">
+    <div id="preview-modal" class="modal-overlay-custom">
         <div class="modal-content-custom">
             <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold m-0 text-uppercase text-muted"><i class="bi bi-eye-fill me-2"></i>Painel do Evento</h6>
-                <button onclick="fecharPreview()" class="btn-close"></button>
+                <button onclick="fecharModal('preview-modal')" class="btn-close"></button>
             </div>
             <div class="p-4 text-center bg-white border-bottom">
                 <h4 class="fw-black m-0 text-uppercase text-dark" id="preview-titulo">...</h4>
-                <div class="mt-2"><button onclick="excluirEventoCompleto()" class="btn btn-outline-danger btn-sm rounded-pill fw-bold"><i class="bi bi-trash-fill me-1"></i> APAGAR HISTÓRICO</button></div>
+                <div class="mt-2"><button onclick="excluirEventoCompleto()" class="btn btn-outline-danger btn-sm rounded-pill fw-bold ios-click"><i class="bi bi-trash-fill me-1"></i> APAGAR HISTÓRICO</button></div>
             </div>
             <div class="flex-grow-1 overflow-auto p-3 bg-white">
                 <table class="table table-striped align-middle"><thead class="table-dark small text-uppercase"><tr><th class="text-center">#</th><th>Militar</th><th>Contato</th><th>Unidade</th><th>Função</th><th class="text-end">Ações</th></tr></thead><tbody id="tabela-preview-corpo"></tbody></table>
@@ -270,7 +291,7 @@
         </div>
     </div>
 
-    <div id="recibo-modal" class="modal-overlay-custom d-none">
+    <div id="recibo-modal" class="modal-overlay-custom">
         <div class="modal-content-custom p-0" style="max-width: 600px; height: auto;">
             <div class="bg-success text-white p-4 text-center">
                 <i class="bi bi-shield-check display-3 mb-2"></i>
@@ -286,7 +307,7 @@
                     </div>
                 </div>
                 <div class="row g-2">
-                    <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-light w-100 py-3 fw-bold rounded-4 text-muted border">Voltar</button></div>
+                    <div class="col-6"><button onclick="fecharModal('recibo-modal')" class="btn btn-light w-100 py-3 fw-bold rounded-4 text-muted border ios-click">Voltar</button></div>
                     <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click shadow-sm">Enviar</button></div>
                 </div>
             </div>
@@ -304,10 +325,18 @@
             }
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
-        window.fecharEdicao = () => document.getElementById('form-militar-modal').classList.add('d-none');
-        window.fecharPreview = () => document.getElementById('preview-modal').classList.add('d-none');
-        window.fecharModalRecibo = () => document.getElementById('recibo-modal').classList.add('d-none');
         
+        window.fecharModal = (id) => {
+            document.getElementById(id).classList.remove('active');
+        };
+        // Funções para abrir (usadas pelo app.js)
+        window.abrirModalUI = (id) => document.getElementById(id).classList.add('active');
+        
+        // Aliases para manter compatibilidade com o JS existente
+        window.fecharEdicao = () => window.fecharModal('form-militar-modal');
+        window.fecharPreview = () => window.fecharModal('preview-modal');
+        window.fecharModalRecibo = () => window.fecharModal('recibo-modal');
+
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>

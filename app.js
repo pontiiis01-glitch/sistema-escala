@@ -2,7 +2,7 @@ import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, o
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
-// === LISTA FIXA APENAS PARA CADASTRO ===
+// === LISTAS E DADOS ===
 const UNIDADES_CBMMA_FIXAS = [
     "1 BBM", "2 BBM", "1 CIEBM", "10 BBM", "13 BBM", "16 CIBM", "BBS", "BBA", "BMUS", "CGCS", "DEP", "DAT", "DP", "DF", "DPM", "DAL", "CPP", "CPO", 
     "1 Seção", "2 Seção", "3 Seção", "4 Seção", "CAPS", "CRF", "CEPDECMA", "ASPIRANTES", "CADETES", "DER", 
@@ -24,6 +24,14 @@ let eventoPreviewAtual = null;
 let listaOrdensTemporaria = [];
 let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
+
+// === UTILITÁRIOS ===
+// Função para corrigir o problema de data "Dia Anterior"
+function formatarDataLocal(dataString) {
+    if(!dataString) return "";
+    const partes = dataString.split('-'); // 2026-02-13 -> [2026, 02, 13]
+    return `${partes[2]}/${partes[1]}/${partes[0]}`; // 13/02/2026
+}
 
 // === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,26 +63,18 @@ async function carregarUnidadesCadastradasNoAdmin() {
     try {
         const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
         const snapshot = await getDocs(q);
-        
         const unidadesReais = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if(data.unidade) unidadesReais.push(data.unidade);
         });
-
         const unidadesUnicas = [...new Set(unidadesReais)].sort();
 
         selAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
-        if(unidadesUnicas.length === 0) {
-            selAdmin.innerHTML += "<option disabled>Nenhuma unidade cadastrada</option>";
-        } else {
-            unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${u}">${u}</option>`);
-        }
+        if(unidadesUnicas.length === 0) selAdmin.innerHTML += "<option disabled>Nenhuma unidade cadastrada</option>";
+        else unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${u}">${u}</option>`);
 
-    } catch (e) {
-        console.error("Erro ao carregar unidades:", e);
-        selAdmin.innerHTML = "<option value=''>Erro ao carregar</option>";
-    }
+    } catch (e) { console.error(e); selAdmin.innerHTML = "<option value=''>Erro ao carregar</option>"; }
 }
 
 // ================= AUTH =================
@@ -232,11 +232,11 @@ async function carregarEventosAdmin() {
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
 
         gruposArray.forEach(info => {
-            const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+            const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
             
             lista.innerHTML += `
-                <div class="list-group-item p-3 border-bottom ios-click" style="cursor:pointer;" onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
+                <div class="list-group-item p-3 border-bottom ios-click" onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div><strong class="text-dark d-block text-uppercase">${info.evento}</strong><small class="text-muted fw-bold">${dataBr}</small></div>
                         <i class="bi bi-chevron-right text-muted"></i>
@@ -252,7 +252,7 @@ async function carregarEventosAdmin() {
 export async function abrirPreview(nomeEvento, dataEvento) {
     eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
     const modal = document.getElementById('preview-modal');
-    modal.classList.remove('d-none');
+    modal.classList.add('active'); // Usa classe active para animação
     
     document.getElementById('preview-titulo').innerText = nomeEvento;
     const corpo = document.getElementById('tabela-preview-corpo');
@@ -271,7 +271,8 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             const cota = d.cota || {oficial: 0, praca: 0};
 
-            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca})" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
+            // Parâmetros para editar: ID, Unidade, Função, Oficiais, Praças, PrazoData, PrazoHora
+            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca}, '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
             if(d.status === "Pendente") {
@@ -302,13 +303,17 @@ export async function abrirPreview(nomeEvento, dataEvento) {
     } catch(e) { console.error(e); corpo.innerHTML = "<tr><td colspan='6'>Erro ao carregar.</td></tr>"; }
 }
 
-export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc) {
+export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora) {
     idEdicaoAdmin = id;
     document.getElementById('edit-admin-subtitle').innerText = `Editando: ${unidade}`;
     document.getElementById('edit-admin-funcao').value = funcao;
     document.getElementById('edit-admin-of').value = of;
     document.getElementById('edit-admin-pc').value = pc;
-    document.getElementById('modal-editar-admin').classList.remove('d-none');
+    // Preenche prazo
+    document.getElementById('edit-admin-prazo-data').value = pData || '';
+    document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
+    
+    document.getElementById('modal-editar-admin').classList.add('active');
 }
 
 export async function salvarEdicaoAdmin() {
@@ -316,14 +321,18 @@ export async function salvarEdicaoAdmin() {
     const novaFuncao = document.getElementById('edit-admin-funcao').value;
     const novoOf = document.getElementById('edit-admin-of').value;
     const novoPc = document.getElementById('edit-admin-pc').value;
+    const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
+    const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
     try {
         await updateDoc(doc(db, "escalas", idEdicaoAdmin), {
             funcao: novaFuncao,
-            cota: { oficial: novoOf, praca: novoPc }
+            cota: { oficial: novoOf, praca: novoPc },
+            prazoData: novoPrazoData,
+            prazoHora: novoPrazoHora
         });
         alert("Atualizado com sucesso!");
-        document.getElementById('modal-editar-admin').classList.add('d-none');
+        document.getElementById('modal-editar-admin').classList.remove('active');
         abrirPreview(eventoPreviewAtual.nome, eventoPreviewAtual.data);
     } catch(e) { alert("Erro ao salvar: " + e.message); }
 }
@@ -349,7 +358,7 @@ export async function excluirEventoCompleto() {
         await batch.commit();
         
         alert("Evento apagado.");
-        document.getElementById('preview-modal').classList.add('d-none');
+        document.getElementById('preview-modal').classList.remove('active');
         carregarEventosAdmin();
     } catch(e) { alert("Erro ao excluir: " + e.message); }
 }
@@ -374,21 +383,31 @@ async function carregarPendenciasUnidade() {
             const isPendente = d.status === "Pendente";
             let isBloqueado = false;
             let textoPrazo = "";
+            let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
+            let btnText = isPendente ? "RESPONDER AGORA" : "EDITAR ENVIO";
             
+            // CORREÇÃO DO BLOQUEIO DE PRAZO
             if (d.prazoData) {
-                const dataLimite = new Date(`${d.prazoData}T${d.prazoHora || '23:59'}:00`);
-                if (new Date() > dataLimite) { isBloqueado = true; textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO</div>`; }
-                else { textoPrazo = `<div class="text-dark small mt-2 bg-warning bg-opacity-25 p-1 rounded"><i class="bi bi-clock-history"></i> Prazo: ${new Date(d.prazoData).toLocaleDateString('pt-BR')} ${d.prazoHora}</div>`; }
-            }
+                // Cria data limite EXATA baseada na string (YYYY-MM-DDTHH:MM)
+                const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
+                const dataLimite = new Date(dataLimiteStr);
+                const hoje = new Date();
 
-            const btnClass = isBloqueado ? "btn-secondary disabled" : (isPendente ? "btn-tactical" : "btn-outline-success");
-            const btnText = isBloqueado ? "EXPIRADO" : (isPendente ? "RESPONDER AGORA" : "EDITAR ENVIO");
+                if (hoje > dataLimite) {
+                    isBloqueado = true;
+                    btnClass = "btn-secondary";
+                    btnText = "PRAZO ENCERRADO";
+                    textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO EM ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
+                } else {
+                    textoPrazo = `<div class="text-dark small mt-2 bg-warning bg-opacity-25 p-1 rounded"><i class="bi bi-clock-history"></i> Prazo: ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
+                }
+            }
 
             lista.innerHTML += `
                 <div class="col-md-6 col-lg-4 animate-up">
                     <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column position-relative mission-card">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="badge bg-dark">${new Date(d.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}</span>
+                            <span class="badge bg-dark">${formatarDataLocal(d.data)}</span>
                             <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${d.status}</span>
                         </div>
                         <h5 class="fw-bold mb-0 text-dark text-uppercase">${d.evento}</h5>
@@ -427,7 +446,7 @@ export async function abrirEdicao(id) {
     for(let i=0; i < qtdOf; i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
     for(let i=0; i < qtdPc; i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
 
-    document.getElementById('form-militar-modal').classList.remove('d-none');
+    document.getElementById('form-militar-modal').classList.add('active');
 }
 
 function gerarHtmlMilitar(index, tipo, dados) {
@@ -464,7 +483,7 @@ export function abrirPreviaRecibo() {
     tbody.innerHTML = "";
     lista.forEach(m => tbody.innerHTML += `<tr><td>${m.posto}</td><td><strong>${m.guerra}</strong></td><td>${m.nome}</td><td>${m.contato}</td></tr>`);
 
-    document.getElementById('recibo-modal').classList.remove('d-none');
+    document.getElementById('recibo-modal').classList.add('active');
 }
 
 export async function confirmarEnvioRecibo() {
@@ -529,7 +548,7 @@ export async function baixarExcelDoEvento() {
         const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
         // Adicionado Horário aqui
-        titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}  /  ${horarioTexto}`;
+        titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
         
         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
         titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
