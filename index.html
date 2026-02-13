@@ -1,508 +1,273 @@
-import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc } from './firebase-config.js';
-import ExcelJS from "https://cdn.skypack.dev/exceljs";
-import { saveAs } from "https://cdn.skypack.dev/file-saver";
-
-let usuarioAtual = null;
-let perfilAtual = null;
-let escalaSelecionadaId = null;
-let eventoPreviewAtual = null;
-let listaOrdensTemporaria = [];
-let dadosParaEnvio = null; // Armazena dados temporariamente para o recibo
-
-// ================= AUTH =================
-export async function fazerLogin() {
-    const email = document.getElementById('email-login').value;
-    const senha = document.getElementById('senha-login').value;
-    try { 
-        await setPersistence(auth, browserSessionPersistence);
-        await signInWithEmailAndPassword(auth, email, senha); 
-    } 
-    catch (e) { console.error(e); document.getElementById('msg-erro').innerText = "Acesso negado. Verifique credenciais."; }
-}
-
-export async function fazerCadastro() {
-    const email = document.getElementById('email-cadastro').value;
-    const senha = document.getElementById('senha-cadastro').value;
-    const unidade = document.getElementById('unidade-cadastro').value;
-    if(!email || !senha || !unidade) return alert("Preencha todos os campos.");
-    try {
-        const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        await setDoc(doc(db, "usuarios", cred.user.uid), { email, unidade: unidade.toUpperCase(), funcao: "escalante" });
-        alert("Unidade cadastrada com sucesso!"); window.location.reload();
-    } catch (e) { alert("Erro: " + e.message); }
-}
-
-export function sair() { signOut(auth).then(() => location.reload()); }
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        usuarioAtual = user;
-        const snap = await getDoc(doc(db, "usuarios", user.uid));
-        if (snap.exists()) {
-            perfilAtual = snap.data();
-            document.getElementById('login-area-wrapper').style.display = 'none';
-            document.getElementById('dashboard-screen').style.display = 'block';
-            document.getElementById('titulo-unidade').innerText = perfilAtual.unidade;
-            
-            if (perfilAtual.funcao === 'admin') {
-                document.getElementById('admin-area').style.display = 'block';
-                carregarListaUnidades(); carregarEventosAdmin();
-            } else {
-                document.getElementById('unidade-area').style.display = 'block';
-                carregarPendenciasUnidade();
-            }
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMANDO OPERACIONAL METROPOLITANO</title>
+    <link rel="icon" type="image/png" href="brasao-unidade.png">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-red: #b30000;
+            --dark-red: #800000;
+            --bg-color: #f0f2f5;
         }
-    }
-});
 
-// ================= ADMIN =================
-async function carregarListaUnidades() {
-    const select = document.getElementById('select-unidade');
-    try {
-        const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
-        const snapshot = await getDocs(q);
-        select.innerHTML = "<option value='' selected>Selecione a Unidade...</option>";
-        let unidades = [];
-        snapshot.forEach(doc => unidades.push(doc.data().unidade));
-        [...new Set(unidades)].sort().forEach(u => select.innerHTML += `<option value="${u}">${u}</option>`);
-    } catch (e) { select.innerHTML = "<option>Erro</option>"; }
-}
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-export function adicionarOrdem() {
-    const unidade = document.getElementById('select-unidade').value;
-    const funcao = document.getElementById('select-funcao').value;
-    const oficiais = document.getElementById('input-oficiais').value;
-    const pracas = document.getElementById('input-pracas').value;
+        /* --- CABEÇALHO (APENAS BRASÃO DA UNIDADE) --- */
+        .imposing-header {
+            background: linear-gradient(135deg, var(--dark-red) 0%, var(--primary-red) 100%);
+            padding: 2rem 1rem 5rem 1rem;
+            text-align: center;
+            color: white;
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: -50px;
+        }
 
-    if (!unidade) return alert("Selecione uma unidade!");
-    if (oficiais == 0 && pracas == 0) return alert("Defina a quantidade de Oficiais ou Praças.");
+        .brasao-unidade-destaque {
+            height: 130px; /* Maior destaque */
+            filter: drop-shadow(0 8px 15px rgba(0,0,0,0.4));
+            margin-bottom: 1rem;
+            transition: transform 0.3s;
+        }
+        .brasao-unidade-destaque:hover { transform: scale(1.05); }
 
-    listaOrdensTemporaria.push({ id: Date.now(), unidade, funcao, oficiais, pracas });
-    atualizarTabelaOrdens();
-}
+        .hero-title { font-weight: 900; font-size: 2rem; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.3); margin: 0; }
 
-function atualizarTabelaOrdens() {
-    const corpo = document.getElementById('tabela-ordens-body');
-    document.getElementById('contador-ordens').innerText = `${listaOrdensTemporaria.length}`;
-    corpo.innerHTML = "";
-    listaOrdensTemporaria.forEach((item, index) => {
-        corpo.innerHTML += `
-            <tr class="border-bottom">
-                <td class="fw-bold">${item.unidade}</td>
-                <td><span class="badge bg-light text-dark border">${item.funcao}</span></td>
-                <td class="small fw-bold text-muted">${item.oficiais} OF / ${item.pracas} PÇ</td>
-                <td class="text-end"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger"><i class="bi bi-x-circle-fill"></i></button></td>
-            </tr>`;
-    });
-}
+        /* --- CARDS --- */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
 
-export function excluirOrdem(index) { listaOrdensTemporaria.splice(index, 1); atualizarTabelaOrdens(); }
-export function limparOrdens() { listaOrdensTemporaria = []; atualizarTabelaOrdens(); }
+        .form-label-bold {
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #555; margin-bottom: 5px; display: block;
+        }
 
-export async function dispararSolicitacao() {
-    const evento = document.getElementById('nome-evento').value.trim();
-    const data = document.getElementById('data-evento').value;
-    // Captura os novos campos de horário
-    const horaInicio = document.getElementById('hora-inicio').value;
-    const horaFim = document.getElementById('hora-fim').value;
-    const prazoData = document.getElementById('prazo-data').value;
-    const prazoHora = document.getElementById('prazo-hora').value;
+        /* --- BOTÕES --- */
+        .btn-imposing {
+            background: var(--primary-red); color: white; border: none; font-weight: 700; text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .btn-imposing:hover { background: var(--dark-red); color: white; transform: translateY(-2px); }
 
-    if (!evento || !data) return alert("Preencha Nome e Data do Evento.");
-    if (!prazoData) return alert("Defina a Data Limite de resposta.");
-    if (listaOrdensTemporaria.length === 0) return alert("Adicione pelo menos uma unidade.");
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
 
-    try {
-        const promises = listaOrdensTemporaria.map(ordem => {
-            return addDoc(collection(db, "escalas"), {
-                evento, 
-                data, 
-                horaInicio, 
-                horaFim,
-                prazoData,
-                prazoHora: prazoHora || "23:59", // Default fim do dia se vazio
-                unidade: ordem.unidade,
-                funcao: ordem.funcao,
-                cota: { oficial: ordem.oficiais, praca: ordem.pracas },
-                status: "Pendente",
-                militares: "[]",
-                criadoEm: new Date()
-            });
-        });
-        await Promise.all(promises);
-        alert(`Sucesso! ${listaOrdensTemporaria.length} solicitações enviadas.`);
-        limparOrdens(); carregarEventosAdmin();
-    } catch (e) { alert("Erro: " + e.message); }
-}
-
-async function carregarEventosAdmin() {
-    const lista = document.getElementById('lista-eventos-admin');
-    lista.innerHTML = "<div class='text-center py-3'>Carregando histórico...</div>";
-    try {
-        // Removido orderBy para evitar erro de índice se não configurado
-        const q = query(collection(db, "escalas")); 
-        const snapshot = await getDocs(q);
-        const grupos = new Map();
-
-        snapshot.forEach(doc => {
-            const d = doc.data();
-            const chave = `${d.evento}|${d.data}`;
-            if (!grupos.has(chave)) grupos.set(chave, { evento: d.evento, data: d.data, total: 0, respondidos: 0 });
-            const g = grupos.get(chave);
-            g.total++;
-            if (d.status === "Preenchido") g.respondidos++;
-        });
-
-        lista.innerHTML = "";
-        if (grupos.size === 0) lista.innerHTML = "<div class='text-muted text-center'>Sem histórico recente.</div>";
-
-        // Converte Map para Array e ordena manualmente por data (recente primeiro)
-        const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
-
-        gruposArray.forEach(info => {
-            const dataBr = new Date(info.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-            const percentual = Math.round((info.respondidos / info.total) * 100);
-            const cor = percentual === 100 ? "success" : "warning";
+    <header class="imposing-header">
+        <div class="container animate-in">
+            <img src="brasao-unidade.png" class="brasao-unidade-destaque" alt="Brasão Unidade">
             
-            lista.innerHTML += `
-                <div class="list-group-item p-3 border-bottom">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                            <strong class="text-dark d-block text-uppercase">${info.evento}</strong>
-                            <small class="text-muted fw-bold">${dataBr}</small>
-                        </div>
-                        <button onclick="window.app.excluirEvento('${info.evento}', '${info.data}')" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </div>
-                    <div class="d-flex justify-content-between small text-muted align-items-center mb-1">
-                        <span onclick="window.app.abrirPreview('${info.evento}', '${info.data}')" style="cursor:pointer" class="text-primary fw-bold hover-scale"> <i class="bi bi-eye"></i> Visualizar</span>
-                        <span>${info.respondidos}/${info.total} Feitos</span>
-                    </div>
-                    <div class="progress" style="height: 6px;"><div class="progress-bar bg-${cor}" style="width: ${percentual}%"></div></div>
-                </div>`;
-        });
-    } catch(e) { console.error(e); lista.innerHTML = "<div class='text-danger text-center'>Erro ao carregar (verifique conexão).</div>"; }
-}
+            <h1 class="hero-title">Comando Operacional Metropolitano</h1>
+            <p class="small text-white-50 text-uppercase fw-bold mt-1">Gestão de Escalas Integrada</p>
+        </div>
+    </header>
 
-export async function excluirEvento(evento, data) {
-    if(!confirm(`Excluir TODAS as solicitações de "${evento}"?`)) return;
-    try {
-        const q = query(collection(db, "escalas"), where("evento", "==", evento), where("data", "==", data));
-        const snap = await getDocs(q);
-        snap.forEach(doc => deleteDoc(doc.ref)); 
-        alert("Excluído.");
-        carregarEventosAdmin();
-    } catch(e) { alert("Erro: " + e.message); }
-}
+    <div class="container pb-5" style="position: relative; z-index: 10;">
 
-// ================= UNIDADE =================
-async function carregarPendenciasUnidade() {
-    const lista = document.getElementById('lista-unidade');
-    lista.innerHTML = "<div class='text-center w-100'>Atualizando missões...</div>";
-    try {
-        const q = query(collection(db, "escalas"), where("unidade", "==", perfilAtual.unidade));
-        const snapshot = await getDocs(q);
-        lista.innerHTML = "";
-        
-        if (snapshot.empty) return lista.innerHTML = "<div class='text-muted text-center w-100 mt-4 fs-5'>Nenhuma missão pendente.</div>";
+        <div id="login-area-wrapper" class="glass-card p-4 p-md-5 mx-auto fade-in" style="max-width: 450px;">
+            <div id="login-form">
+                <div class="text-center mb-4"><h4 class="fw-bold text-dark">ACESSO RESTRITO</h4></div>
+                <div class="mb-3">
+                    <label class="form-label-bold">E-mail</label>
+                    <input type="email" id="email-login" class="form-control" placeholder="usuario@cbm.ma.gov.br">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label-bold">Senha</label>
+                    <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
+                </div>
+                <button onclick="fazerLogin()" class="btn btn-imposing w-100 py-3 rounded-3">ENTRAR</button>
+                <div class="text-center mt-3 pt-3 border-top">
+                    <a href="#" onclick="alternarTela('cadastro')" class="text-danger fw-bold small text-decoration-none">Cadastrar Unidade</a>
+                </div>
+            </div>
 
-        // Ordenação manual
-        const docs = [];
-        snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
-        docs.sort((a,b) => new Date(a.data) - new Date(b.data));
+            <div id="cadastro-form" style="display: none;">
+                <div class="text-center mb-3"><h5 class="fw-bold text-danger">NOVA UNIDADE</h5></div>
+                <div class="mb-2"><input type="text" id="unidade-cadastro" class="form-control" placeholder="Nome (Ex: 1º BBM)"></div>
+                <div class="mb-2"><input type="email" id="email-cadastro" class="form-control" placeholder="E-mail"></div>
+                <div class="mb-3"><input type="password" id="senha-cadastro" class="form-control" placeholder="Senha"></div>
+                <button onclick="fazerCadastro()" class="btn btn-imposing w-100 py-2">CADASTRAR</button>
+                <div class="text-center mt-2"><a href="#" onclick="alternarTela('login')" class="small text-secondary fw-bold text-decoration-none">Voltar</a></div>
+            </div>
+            <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
+        </div>
 
-        docs.forEach(d => {
-            const dataEventoFmt = new Date(d.data).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-            const isPendente = d.status === "Pendente";
+        <div id="dashboard-screen" style="display: none;" class="fade-in">
             
-            // LÓGICA DE BLOQUEIO DE PRAZO PRECISA
-            let isBloqueado = false;
-            let textoPrazo = "";
-            let textoHorario = "";
+            <div class="bg-white p-3 rounded-4 shadow-sm d-flex justify-content-between align-items-center mb-4 border-start border-5 border-danger">
+                <div>
+                    <small class="text-muted fw-bold text-uppercase">Painel da Unidade</small>
+                    <h2 id="titulo-unidade" class="fw-bold m-0 text-dark">...</h2>
+                </div>
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm fw-bold px-3 rounded-pill">SAIR</button>
+            </div>
 
-            if(d.horaInicio && d.horaFim) textoHorario = `${d.horaInicio} às ${d.horaFim}`;
+            <div id="admin-area" style="display: none;">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="bg-white p-4 rounded-4 shadow-sm border h-100">
+                            <h5 class="fw-black mb-4 pb-2 border-bottom text-danger"><i class="bi bi-file-earmark-plus me-2"></i>CRIAR MISSÃO</h5>
+                            
+                            <div class="p-3 rounded-3 mb-3" style="background-color: #e3f2fd; border: 1px solid #90caf9;">
+                                <h6 class="text-primary fw-bold small mb-3"><i class="bi bi-calendar-event me-1"></i> DADOS DO EVENTO</h6>
+                                <div class="mb-2">
+                                    <label class="form-label-bold text-primary">Nome do Evento</label>
+                                    <input type="text" id="nome-evento" class="form-control fw-bold" placeholder="Ex: Operação Carnaval">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-12"><label class="form-label-bold text-primary">Data</label><input type="date" id="data-evento" class="form-control"></div>
+                                    <div class="col-6"><label class="form-label-bold text-primary">Início (Hora)</label><input type="time" id="hora-inicio" class="form-control"></div>
+                                    <div class="col-6"><label class="form-label-bold text-primary">Término (Hora)</label><input type="time" id="hora-fim" class="form-control"></div>
+                                </div>
+                            </div>
 
-            if (d.prazoData) {
-                // Cria data limite combinando Dia + Hora
-                const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
-                const dataLimite = new Date(dataLimiteStr);
-                const hoje = new Date();
-
-                if (hoje > dataLimite) {
-                    isBloqueado = true;
-                    textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO: ${new Date(d.prazoData).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} às ${d.prazoHora}</div>`;
-                } else {
-                    textoPrazo = `<div class="text-dark small mt-2 bg-warning bg-opacity-25 p-1 rounded"><i class="bi bi-clock-history"></i> Prazo: ${new Date(d.prazoData).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} às ${d.prazoHora || '23:59'}</div>`;
-                }
-            }
-
-            const btnClass = isBloqueado ? "btn-secondary disabled" : (isPendente ? "btn-danger" : "btn-outline-success");
-            const btnText = isBloqueado ? "PRAZO EXPIRADO" : (isPendente ? "RESPONDER" : "EDITAR ENVIADO");
-
-            lista.innerHTML += `
-                <div class="col-md-6 col-lg-4">
-                    <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="badge bg-dark">${dataEventoFmt}</span>
-                            <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${d.status}</span>
+                            <div class="p-3 rounded-3 mb-4" style="background-color: #ffebee; border: 1px solid #ef9a9a;">
+                                <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-clock-history me-1"></i> PRAZO DE RESPOSTA</h6>
+                                <div class="row g-2">
+                                    <div class="col-7"><label class="form-label-bold text-danger">Data Limite</label><input type="date" id="prazo-data" class="form-control fw-bold text-danger"></div>
+                                    <div class="col-5"><label class="form-label-bold text-danger">Hora Limite</label><input type="time" id="prazo-hora" class="form-control fw-bold text-danger"></div>
+                                </div>
+                                <small class="text-muted d-block mt-2" style="font-size: 0.7rem;">O envio será bloqueado após este horário.</small>
+                            </div>
+                            
+                            <hr>
+                            <label class="form-label-bold">Unidade</label>
+                            <select id="select-unidade" class="form-select mb-2 fw-bold text-secondary"><option>Carregando...</option></select>
+                            <label class="form-label-bold">Função</label>
+                            <select id="select-funcao" class="form-select mb-2">
+                                <option value="SOCORRISTA">SOCORRISTA</option>
+                                <option value="MOTORISTA (AR/ABT)">MOTORISTA (AR/ABT)</option>
+                                <option value="COORD. DO EVENTO">COORD. DO EVENTO</option>
+                                <option value="OF. DE LOGÍSTICA">OF. DE LOGÍSTICA</option>
+                                <option value="MOP (MOTO)">MOP (MOTO)</option>
+                                <option value="MERGULHADOR">MERGULHADOR</option>
+                                <option value="VISTORIANTE">VISTORIANTE</option>
+                            </select>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="Qtd. Oficiais"></div>
+                                <div class="col-6"><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="Qtd. Praças"></div>
+                            </div>
+                            <button onclick="adicionarOrdem()" class="btn btn-dark w-100 fw-bold py-2"><i class="bi bi-plus-lg me-2"></i> INCLUIR NA LISTA</button>
                         </div>
-                        <h5 class="fw-bold mb-0 text-dark text-uppercase">${d.evento}</h5>
-                        <small class="text-muted mb-2 d-block">${textoHorario}</small>
-                        
-                        <div class="bg-light p-3 rounded border text-center my-2">
-                            <strong class="d-block text-primary">${d.funcao}</strong>
-                            <div class="small text-muted">Solicitado: ${d.cota.oficial} Of / ${d.cota.praca} Pç</div>
-                        </div>
-
-                        ${textoPrazo}
-
-                        <button onclick="window.app.abrirEdicao('${d.id}')" class="btn ${btnClass} w-100 fw-bold mt-auto py-2" ${isBloqueado ? 'disabled' : ''}>
-                            ${btnText}
-                        </button>
                     </div>
-                </div>`;
-        });
-    } catch(e) { console.error(e); lista.innerHTML = "Erro ao carregar dados."; }
-}
 
-export async function abrirEdicao(id) {
-    escalaSelecionadaId = id;
-    const docSnap = await getDoc(doc(db, "escalas", id));
-    const d = docSnap.data();
-    
-    document.getElementById('titulo-evento-form').innerText = d.evento;
-    document.getElementById('subtitulo-form').innerText = `${d.funcao} | Cota: ${d.cota.oficial} Of / ${d.cota.praca} Pç`;
-    
-    const container = document.getElementById('container-inputs-militares');
-    container.innerHTML = "";
+                    <div class="col-lg-7">
+                        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold m-0 text-dark">Rascunho de Ordens</h6>
+                                <span class="badge bg-danger rounded-pill" id="contador-ordens">0</span>
+                            </div>
+                            <div class="bg-light rounded p-2 mb-3 border" style="max-height: 200px; overflow-y: auto;">
+                                <table class="table table-sm table-borderless mb-0 small align-middle"><tbody id="tabela-ordens-body"></tbody></table>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button onclick="limparOrdens()" class="btn btn-light fw-bold text-muted w-50">Limpar</button>
+                                <button onclick="dispararSolicitacao()" class="btn btn-imposing w-100"><i class="bi bi-send-fill me-2"></i> DISPARAR MISSÃO</button>
+                            </div>
+                        </div>
 
-    let dadosSalvos = [];
-    try { dadosSalvos = JSON.parse(d.militares); } catch {}
-
-    let contadorGlobal = 0;
-    for(let i=0; i < parseInt(d.cota.oficial); i++) {
-        container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contadorGlobal] || {});
-        contadorGlobal++;
-    }
-    for(let i=0; i < parseInt(d.cota.praca); i++) {
-        container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contadorGlobal] || {});
-        contadorGlobal++;
-    }
-
-    document.getElementById('form-militar').style.display = 'block';
-    document.getElementById('form-militar').scrollIntoView({ behavior: 'smooth' });
-}
-
-function gerarHtmlMilitar(index, tipo, dados) {
-    return `
-    <div class="p-3 bg-light rounded-3 border mb-3 militar-row">
-        <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
-        <div class="row g-2">
-            <div class="col-4 col-md-3">
-                <input type="text" class="form-control campo-posto" placeholder="Posto/Grad" value="${dados.posto || ''}">
+                        <div class="bg-white p-4 rounded-4 shadow-sm border">
+                            <h6 class="fw-bold mb-3 text-secondary text-uppercase"><i class="bi bi-clock-history me-2"></i>Histórico Recente</h6>
+                            <div id="lista-eventos-admin" class="list-group list-group-flush"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-8 col-md-5">
-                <input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${dados.nome || ''}">
-            </div>
-            <div class="col-6 col-md-4">
-                <input type="text" class="form-control campo-guerra fw-bold" placeholder="Nome Guerra" value="${dados.guerra || ''}">
-            </div>
-            <div class="col-6 col-md-12">
-                <input type="text" class="form-control campo-tel" placeholder="Telefone (Zap)" value="${dados.contato || ''}">
+
+            <div id="unidade-area" style="display: none;">
+                <h4 class="fw-black mb-4 ps-3 border-start border-danger border-4">Missões Pendentes</h4>
+                <div id="lista-unidade" class="row g-4"></div>
+                
+                <div id="form-militar" style="display:none;" class="bg-white p-4 mt-5 rounded-4 shadow-lg border position-relative fade-in">
+                    <button onclick="fecharEdicao()" class="btn-close position-absolute top-0 end-0 m-4"></button>
+                    <div class="text-center mb-4">
+                        <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2 rounded-pill">PREENCHIMENTO</span>
+                        <h3 id="titulo-evento-form" class="fw-black text-dark mb-0">...</h3>
+                        <p id="subtitulo-form" class="text-muted fw-bold">...</p>
+                    </div>
+                    <div id="container-inputs-militares" class="mb-4"></div>
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm fs-5">
+                                <i class="bi bi-check-circle-fill me-2"></i> CONFERIR E ENVIAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>`;
-}
+    </div>
 
-// ================= RECIBO E PDF PROFISSIONAL =================
-export function abrirPreviaRecibo() {
-    const rows = document.querySelectorAll('.militar-row');
-    let lista = [];
-    let valido = true;
+    <div id="recibo-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2050;">
+        <div class="bg-white p-4 rounded-4 w-100 shadow-lg fade-in" style="max-width: 700px;">
+            <div class="text-center mb-4">
+                <h5 class="fw-bold text-success mb-1">CONFERÊNCIA DE DADOS</h5>
+                <small class="text-muted">Verifique se o efetivo está correto. Um recibo oficial será gerado.</small>
+            </div>
+            
+            <div class="bg-light p-3 border rounded mb-3">
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="fw-bold">Evento:</span> <span id="recibo-evento">...</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="fw-bold">Unidade:</span> <span id="recibo-unidade">...</span>
+                </div>
+                <div class="table-responsive mt-3" style="max-height: 300px;">
+                    <table class="table table-sm table-bordered bg-white small mb-0">
+                        <thead class="table-light"><tr><th>Posto</th><th>Guerra</th><th>Nome Completo</th><th>Contato</th></tr></thead>
+                        <tbody id="recibo-lista-corpo"></tbody>
+                    </table>
+                </div>
+            </div>
 
-    rows.forEach(row => {
-        const posto = row.querySelector('.campo-posto').value.trim();
-        const nome = row.querySelector('.campo-nome').value.trim();
-        const guerra = row.querySelector('.campo-guerra').value.trim();
-        const contato = row.querySelector('.campo-tel').value.trim();
-        if(!posto || !nome || !guerra) valido = false;
-        lista.push({ posto, nome, guerra, contato });
-    });
+            <div class="row g-2">
+                <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3">VOLTAR / CORRIGIR</button></div>
+                <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3"><i class="bi bi-file-earmark-pdf-fill me-2"></i> CONFIRMAR E BAIXAR PDF</button></div>
+            </div>
+        </div>
+    </div>
 
-    if(!valido) return alert("Preencha todos os campos obrigatórios (Posto, Nome, Guerra).");
+    <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000;">
+        <div class="bg-white p-4 rounded-4 w-100 shadow-lg fade-in" style="max-width: 900px;">
+            <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+                <h5 class="fw-bold m-0 text-danger">Visualizar Escala</h5>
+                <button onclick="fecharPreview()" class="btn-close"></button>
+            </div>
+            <h4 class="fw-bold text-dark mb-3 text-center" id="preview-titulo">...</h4>
+            <div class="table-responsive border rounded mb-3 bg-white" style="max-height: 450px;">
+                <table class="table table-hover table-striped mb-0 align-middle"><tbody id="tabela-preview-corpo"></tbody></table>
+            </div>
+            <button onclick="baixarExcelDoEvento()" class="btn btn-success w-100 py-3 fw-bold rounded-3">BAIXAR EXCEL</button>
+        </div>
+    </div>
 
-    dadosParaEnvio = lista; // Guarda para o envio final
-    
-    // Preenche Modal
-    document.getElementById('recibo-evento').innerText = document.getElementById('titulo-evento-form').innerText;
-    document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
-    
-    const tbody = document.getElementById('recibo-lista-corpo');
-    tbody.innerHTML = "";
-    lista.forEach(m => {
-        tbody.innerHTML += `<tr><td>${m.posto}</td><td><strong>${m.guerra}</strong></td><td>${m.nome}</td><td>${m.contato}</td></tr>`;
-    });
-
-    const modal = document.getElementById('recibo-modal');
-    modal.classList.remove('d-none'); modal.classList.add('d-flex');
-}
-
-export async function confirmarEnvioRecibo() {
-    if (!escalaSelecionadaId || !dadosParaEnvio) return;
-    
-    try {
-        const jsonString = JSON.stringify(dadosParaEnvio);
-        await updateDoc(doc(db, "escalas", escalaSelecionadaId), { militares: jsonString, status: "Preenchido" });
-        
-        // Gera o PDF Profissional
-        gerarReciboPDFProfissional(dadosParaEnvio);
-        
-        alert("Enviado com sucesso! O recibo foi baixado.");
-        document.getElementById('recibo-modal').classList.replace('d-flex', 'd-none');
-        document.getElementById('form-militar').style.display = 'none';
-        carregarPendenciasUnidade();
-    } catch (e) { alert("Erro ao salvar: " + e.message); }
-}
-
-function gerarReciboPDFProfissional(listaMilitares) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const tituloEvento = document.getElementById('titulo-evento-form').innerText;
-
-    // --- CONFIGURAÇÃO VISUAL ---
-    doc.setLineWidth(0.5);
-    doc.rect(5, 5, 200, 287); // Borda da Página
-
-    // Cabeçalho
-    doc.setFillColor(180, 0, 0); // Vermelho Escuro
-    doc.rect(5, 5, 200, 25, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("RECIBO DE ENVIO DE ESCALA - CBMMA", 105, 18, null, null, "center");
-    doc.setFontSize(10);
-    doc.text("COMANDO OPERACIONAL METROPOLITANO", 105, 24, null, null, "center");
-
-    // Informações
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.text(`UNIDADE: ${perfilAtual.unidade}`, 15, 40);
-    doc.text(`EVENTO: ${tituloEvento}`, 15, 46);
-    doc.text(`DATA DO ENVIO: ${new Date().toLocaleString()}`, 15, 52);
-    
-    doc.line(15, 55, 195, 55); // Linha separadora
-
-    // Tabela Header
-    let y = 65;
-    doc.setFillColor(230, 230, 230);
-    doc.rect(15, 60, 180, 8, 'F');
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("POSTO", 20, 65);
-    doc.text("NOME DE GUERRA", 50, 65);
-    doc.text("NOME COMPLETO", 90, 65);
-    doc.text("CONTATO", 160, 65);
-
-    // Tabela Corpo
-    doc.setFont("helvetica", "normal");
-    listaMilitares.forEach((m, i) => {
-        if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); } // Zebra
-        
-        doc.text(m.posto, 20, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(m.guerra.toUpperCase(), 50, y);
-        doc.setFont("helvetica", "normal");
-        
-        // Trunca nome se for muito longo
-        let nomeFmt = m.nome.length > 35 ? m.nome.substring(0,35)+"..." : m.nome;
-        doc.text(nomeFmt, 90, y);
-        
-        doc.text(m.contato, 160, y);
-        y += 7;
-    });
-
-    // Rodapé
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Este documento serve como comprovante de que a unidade enviou o efetivo solicitado via sistema.", 105, 280, null, null, "center");
-
-    doc.save(`Recibo_${perfilAtual.unidade}_${Date.now()}.pdf`);
-}
-
-// ================= PREVIEW ADMIN =================
-export async function abrirPreview(nomeEvento, dataEvento) {
-    eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
-    const modal = document.getElementById('preview-modal');
-    modal.classList.remove('d-none'); modal.classList.add('d-flex');
-    
-    document.getElementById('preview-titulo').innerText = nomeEvento;
-    const corpo = document.getElementById('tabela-preview-corpo');
-    corpo.innerHTML = "<tr><td colspan='6' class='text-center py-4'>Carregando escala unificada...</td></tr>";
-
-    try {
-        const q = query(collection(db, "escalas"), where("evento", "==", nomeEvento), where("data", "==", dataEvento));
-        const snapshot = await getDocs(q);
-        let html = "";
-        let ordemGlobal = 1;
-        
-        snapshot.forEach(docSnap => {
-            const d = docSnap.data();
-            let militares = [];
-            try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
-
-            if(d.status === "Pendente") {
-                html += `<tr class="table-danger"><td colspan="6" class="text-center small text-danger fw-bold">PENDENTE: ${d.unidade} - ${d.funcao}</td></tr>`;
-            } else {
-                militares.forEach(m => {
-                    html += `<tr>
-                        <td class="fw-bold text-center">${ordemGlobal++}</td>
-                        <td>${m.posto}</td>
-                        <td><strong>${m.guerra}</strong></td>
-                        <td>${m.contato}</td>
-                        <td>${d.unidade}</td>
-                        <td><span class="badge bg-light text-dark border">${d.funcao}</span></td>
-                    </tr>`;
-                });
-            }
-        });
-        corpo.innerHTML = html;
-    } catch(e) { corpo.innerHTML = "<tr><td colspan='6' class='text-danger text-center'>Erro ao carregar.</td></tr>"; }
-}
-
-export async function baixarExcelDoEvento() {
-    if (!eventoPreviewAtual) return;
-    try {
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Escala');
-        const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
-        const snapshot = await getDocs(q);
-
-        worksheet.columns = [
-            { header: 'ORD', key: 'ord', width: 6 },
-            { header: 'POSTO', key: 'posto', width: 12 },
-            { header: 'NOME DE GUERRA', key: 'guerra', width: 25 },
-            { header: 'NOME COMPLETO', key: 'nome', width: 45 },
-            { header: 'CONTATO', key: 'contato', width: 18 },
-            { header: 'UNIDADE', key: 'unidade', width: 15 },
-            { header: 'FUNÇÃO', key: 'funcao', width: 20 }
-        ];
-
-        let contador = 1;
-        snapshot.forEach(docSnap => {
-            const d = docSnap.data();
-            let militares = [];
-            try { militares = JSON.parse(d.militares); } catch { return; }
-
-            militares.forEach(m => {
-                worksheet.addRow({
-                    ord: contador++, posto: m.posto, guerra: m.guerra.toUpperCase(), nome: m.nome.toUpperCase(), contato: m.contato, unidade: d.unidade, funcao: d.funcao
-                });
-            });
-        });
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `${eventoPreviewAtual.nome}.xlsx`);
-    } catch (e) { alert("Erro: " + e.message); }
-}
-
-window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEvento, abrirEdicao };
+    <script type="module" src="app.js"></script>
+    <script>
+        window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
+        window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
+        window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
+        window.fecharModalRecibo = () => document.getElementById('recibo-modal').classList.replace('d-flex', 'd-none');
+        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEvento'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
+    </script>
+</body>
+</html>
