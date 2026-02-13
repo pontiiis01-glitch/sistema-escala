@@ -9,19 +9,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         :root {
             /* Identidade CBMMA & Tática */
-            --cbm-red: #990000;       /* Vermelho Sangue Escuro */
-            --cbm-gold: #FFD700;      /* Dourado Militar */
+            --cbm-red: #990000;       
+            --cbm-gold: #FFD700;      
             --tactical-black: #121212;
             --tactical-gray: #1e1e1e;
-            --panel-white: #ffffff;
             --bg-app: #f2f4f7;
+            --ios-gray: #f5f5f7; /* Cor estilo Apple */
         }
 
         body {
@@ -35,7 +35,7 @@
         /* --- CABEÇALHO ROBUSTO --- */
         .header-tactical {
             background: linear-gradient(180deg, var(--tactical-black) 0%, var(--cbm-red) 120%);
-            padding: 3rem 1rem 6rem 1rem; /* Espaço extra embaixo para o overlap */
+            padding: 3rem 1rem 6rem 1rem; 
             position: relative;
             text-align: center;
             border-bottom: 5px solid var(--cbm-gold);
@@ -49,150 +49,101 @@
             opacity: 0.1;
         }
 
-        /* Logos e Brasão Central */
         .brasao-container {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 1.5rem;
+            position: relative; z-index: 2; display: flex; justify-content: center; align-items: center; margin-bottom: 1.5rem;
         }
 
         .brasao-central {
-            width: 160px;
-            height: 160px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3)); /* Brilho dourado sutil */
+            width: 160px; height: 160px; object-fit: contain;
+            filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3));
             transition: transform 0.3s ease;
         }
-        
         .brasao-central:hover { transform: scale(1.05); }
 
         .system-title {
-            color: white;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 1.8rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            position: relative; z-index: 2;
+            color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8); position: relative; z-index: 2;
         }
 
         .system-subtitle {
-            color: var(--cbm-gold);
-            font-size: 0.85rem;
-            font-weight: 700;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            position: relative; z-index: 2;
+            color: var(--cbm-gold); font-size: 0.85rem; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; position: relative; z-index: 2;
         }
 
         /* --- LOGIN CARD --- */
-        .main-container {
-            margin-top: -60px; /* Sobe para ficar por cima do header */
-            position: relative;
-            z-index: 10;
-            padding-bottom: 3rem;
-        }
+        .main-container { margin-top: -60px; position: relative; z-index: 10; padding-bottom: 3rem; }
 
         .card-glass {
             background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px); /* Suporte Safari/iOS */
+            border-radius: 24px; /* Mais arredondado estilo iOS */
             border-top: 4px solid var(--cbm-red);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
 
-        /* --- DASHBOARD: ÁREA DA UNIDADE --- */
-        .welcome-bar {
-            background: var(--tactical-black);
-            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
-            color: white;
-            border-radius: 12px;
-            border-left: 6px solid var(--cbm-gold);
-            padding: 1.5rem 2rem;
+        /* --- IOS STYLE LINK --- */
+        .ios-action-link {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            margin-top: 15px;
+            background-color: var(--ios-gray);
+            border-radius: 12px;
+            text-decoration: none;
+            color: #666;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid transparent;
+        }
+
+        .ios-action-link:hover {
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: scale(1.02);
+            border-color: #eee;
+            color: var(--cbm-red);
+        }
+
+        .ios-action-text {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .ios-action-text strong { font-weight: 700; color: var(--tactical-black); }
+        .ios-action-link:hover .ios-action-text strong { color: var(--cbm-red); }
+
+        /* --- PASSWORD TOGGLE --- */
+        .btn-reveal-password {
+            background: white;
+            border: 1px solid #ccc;
+            border-left: none;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .btn-reveal-password:hover { color: var(--cbm-red); }
+
+        /* --- DASHBOARD --- */
+        .welcome-bar {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+            color: white; border-radius: 12px; border-left: 6px solid var(--cbm-gold);
+            padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .welcome-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #aaa;
-            font-weight: 600;
-        }
+        #titulo-unidade { color: var(--cbm-gold); font-weight: 900; text-transform: uppercase; font-size: 1.8rem; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .welcome-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; font-weight: 600; }
 
-        #titulo-unidade {
-            color: var(--cbm-gold);
-            font-weight: 900;
-            text-transform: uppercase;
-            font-size: 1.8rem;
-            margin: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        /* --- BOTÕES E INPUTS --- */
+        /* --- FORM ELEMENTS --- */
         .btn-tactical {
-            background-color: var(--cbm-red);
-            color: white;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border: none;
-            transition: all 0.2s;
+            background-color: var(--cbm-red); color: white; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: none; transition: all 0.2s;
         }
         .btn-tactical:hover { background-color: #cc0000; transform: translateY(-2px); color: white;}
-
-        .btn-outline-gold {
-            border: 2px solid var(--cbm-gold);
-            color: var(--cbm-gold);
-            font-weight: 700;
-        }
-        .btn-outline-gold:hover { background: var(--cbm-gold); color: black; }
-
-        .form-label-custom {
-            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #555; margin-bottom: 5px; letter-spacing: 0.5px;
-        }
-        .form-control, .form-select {
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 10px;
-            font-weight: 600;
-            color: var(--tactical-black);
-        }
-        .form-control:focus {
-            border-color: var(--cbm-red);
-            box-shadow: 0 0 0 3px rgba(153, 0, 0, 0.1);
-        }
-
-        /* --- CARDS DE MISSÃO --- */
-        .mission-card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
-            overflow: hidden;
-            background: white;
-            height: 100%;
-        }
-        .mission-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         
-        .mission-header {
-            background: var(--tactical-gray);
-            color: white;
-            padding: 10px 15px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            display: flex;
-            justify-content: space-between;
-        }
+        .form-label-custom { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #555; margin-bottom: 5px; letter-spacing: 0.5px; }
+        .form-control, .form-select { border: 1px solid #ccc; border-radius: 8px; padding: 10px; font-weight: 600; color: var(--tactical-black); }
+        .form-control:focus { border-color: var(--cbm-red); box-shadow: 0 0 0 3px rgba(153, 0, 0, 0.1); }
 
-        /* Animações */
         .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -206,7 +157,6 @@
             <div class="brasao-container animate-up">
                 <img src="brasao_unidade.png" class="brasao-central" alt="Brasão Unidade">
             </div>
-            
             <div class="text-content animate-up" style="animation-delay: 0.1s;">
                 <h1 class="system-title">Comando Operacional Metropolitano</h1>
                 <p class="system-subtitle">Sistema Integrado de Escalas - CBMMA</p>
@@ -219,10 +169,11 @@
         <div id="login-area-wrapper" class="row justify-content-center">
             <div class="col-md-5 col-lg-4">
                 <div class="card-glass p-4 animate-up" style="animation-delay: 0.2s;">
+                    
                     <div id="login-form">
                         <div class="text-center mb-4 border-bottom pb-3">
-                            <h5 class="fw-black text-dark m-0">IDENTIFICAÇÃO</h5>
-                            <small class="text-muted fw-bold" style="font-size: 0.7rem;">ACESSO RESTRITO AO COMANDO</small>
+                            <h5 class="fw-black text-dark m-0" style="letter-spacing: -0.5px;">IDENTIFICAÇÃO</h5>
+                            <small class="text-muted fw-bold" style="font-size: 0.65rem; letter-spacing: 1px;">ACESSO RESTRITO AO COMANDO</small>
                         </div>
                         
                         <div class="mb-3">
@@ -232,31 +183,56 @@
                                 <input type="email" id="email-login" class="form-control border-start-0 ps-0" placeholder="unidade@cbm.ma.gov.br">
                             </div>
                         </div>
+                        
                         <div class="mb-4">
                             <label class="form-label-custom">Senha</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
-                                <input type="password" id="senha-login" class="form-control border-start-0 ps-0" placeholder="••••••••">
+                                <input type="password" id="senha-login" class="form-control border-start-0 border-end-0 ps-0" placeholder="••••••••">
+                                <button class="btn btn-reveal-password rounded-end" type="button" onclick="toggleSenha('senha-login', 'icon-eye-login')">
+                                    <i class="bi bi-eye" id="icon-eye-login"></i>
+                                </button>
                             </div>
                         </div>
                         
-                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 py-3 rounded-3 shadow-sm mb-3">
+                        <button onclick="fazerLogin()" class="btn btn-tactical w-100 py-3 rounded-3 shadow-sm mb-2">
                             ENTRAR NO SISTEMA
                         </button>
                         
-                        <div class="text-center">
-                            <a href="#" onclick="alternarTela('cadastro')" class="text-secondary fw-bold small text-decoration-none" style="font-size: 0.75rem;">SOLICITAR CADASTRO DE UNIDADE</a>
-                        </div>
+                        <a href="#" onclick="alternarTela('cadastro')" class="ios-action-link">
+                            <div class="ios-action-text">
+                                Não possui conta?<br>
+                                <strong>Solicite credenciamento</strong>
+                            </div>
+                            <i class="bi bi-chevron-right text-muted small"></i>
+                        </a>
+
                     </div>
 
                     <div id="cadastro-form" style="display: none;">
                         <div class="text-center mb-3"><h5 class="fw-bold text-danger">NOVA UNIDADE</h5></div>
                         <div class="mb-2"><label class="form-label-custom">Nome da Unidade</label><input type="text" id="unidade-cadastro" class="form-control" placeholder="Ex: 1º BBM"></div>
                         <div class="mb-2"><label class="form-label-custom">Email</label><input type="email" id="email-cadastro" class="form-control"></div>
-                        <div class="mb-3"><label class="form-label-custom">Senha</label><input type="password" id="senha-cadastro" class="form-control"></div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-custom">Senha</label>
+                            <div class="input-group">
+                                <input type="password" id="senha-cadastro" class="form-control border-end-0" placeholder="Crie uma senha">
+                                <button class="btn btn-reveal-password rounded-end" type="button" onclick="toggleSenha('senha-cadastro', 'icon-eye-cadastro')">
+                                    <i class="bi bi-eye" id="icon-eye-cadastro"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <button onclick="fazerCadastro()" class="btn btn-tactical w-100 py-2">CADASTRAR</button>
-                        <div class="text-center mt-3"><a href="#" onclick="alternarTela('login')" class="small text-muted fw-bold text-decoration-none">← VOLTAR</a></div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="#" onclick="alternarTela('login')" class="small text-muted fw-bold text-decoration-none" style="font-size: 0.8rem;">
+                                <i class="bi bi-arrow-left me-1"></i> Voltar ao Login
+                            </a>
+                        </div>
                     </div>
+                    
                     <p id="msg-erro" class="text-danger text-center mt-3 fw-bold small mb-0"></p>
                 </div>
             </div>
@@ -267,7 +243,8 @@
             <div class="welcome-bar mb-5">
                 <div>
                     <div class="welcome-label"><i class="bi bi-shield-fill me-1"></i> Unidade Logada</div>
-                    <h2 id="titulo-unidade">...</h2> </div>
+                    <h2 id="titulo-unidade">...</h2>
+                </div>
                 <button onclick="sair()" class="btn btn-outline-danger btn-sm px-4 fw-bold rounded-pill text-uppercase border-2">
                     Sair <i class="bi bi-box-arrow-right ms-2"></i>
                 </button>
@@ -277,7 +254,7 @@
                 <div class="row g-4">
                     <div class="col-lg-5">
                         <div class="bg-white p-4 rounded-4 shadow-sm border-top border-4 border-danger h-100">
-                            <h5 class="text-dark fw-black mb-4 pb-2 border-bottom"><i class="bi bi-megaphone-fill me-2 text-danger"></i>NOVA ORDEM DE SERVIÇO</h5>
+                            <h5 class="text-dark fw-black mb-4 pb-2 border-bottom"><i class="bi bi-megaphone-fill me-2 text-danger"></i>NOVA ORDEM</h5>
                             
                             <div class="p-3 bg-light rounded-3 border mb-3">
                                 <label class="form-label-custom">Evento / Operação</label>
@@ -357,7 +334,6 @@
 
             <div id="unidade-area" style="display: none;">
                 <h4 class="fw-black mb-4 text-uppercase"><span class="text-danger">///</span> Missões e Escalas Pendentes</h4>
-                
                 <div id="lista-unidade" class="row g-4"></div>
                 
                 <div id="form-militar" style="display:none;" class="bg-white p-4 mt-5 rounded-4 shadow-lg border border-top border-4 border-danger position-relative animate-up">
@@ -415,14 +391,9 @@
                         </table>
                     </div>
                 </div>
-
                 <div class="row g-2">
-                    <div class="col-6">
-                        <button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3 text-uppercase">Corrigir</button>
-                    </div>
-                    <div class="col-6">
-                        <button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3 text-uppercase"><i class="bi bi-file-pdf-fill me-2"></i> Confirmar</button>
-                    </div>
+                    <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3 text-uppercase">Corrigir</button></div>
+                    <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3 text-uppercase"><i class="bi bi-file-pdf-fill me-2"></i> Confirmar</button></div>
                 </div>
             </div>
         </div>
@@ -430,13 +401,25 @@
 
     <script type="module" src="app.js"></script>
     <script>
-        // Funções Globais para acesso via HTML onclick
+        // Função para mostrar/esconder senha
+        window.toggleSenha = (idInput, idIcon) => {
+            const input = document.getElementById(idInput);
+            const icon = document.getElementById(idIcon);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        };
+
+        // Funções Globais
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharEdicao = () => document.getElementById('form-militar').style.display = 'none';
         window.fecharPreview = () => document.getElementById('preview-modal').classList.replace('d-flex', 'd-none');
         window.fecharModalRecibo = () => document.getElementById('recibo-modal').classList.replace('d-flex', 'd-none');
         
-        // Mapeamento das funções do módulo app.js para o escopo global window
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEvento','abrirEdicao'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>
