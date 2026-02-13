@@ -31,14 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function popularSelectCadastroEFuncoes() {
-    // 1. Popula APENAS o select de CADASTRO com a lista fixa
     const selCadastro = document.getElementById('unidade-cadastro');
     if(selCadastro && selCadastro.options.length <= 1) {
         selCadastro.innerHTML = "<option value=''>Selecione a Unidade...</option>";
         UNIDADES_CBMMA_FIXAS.forEach(u => selCadastro.innerHTML += `<option value="${u}">${u}</option>`);
     }
 
-    // 2. Popula Funções
     const selectsFuncao = [document.getElementById('select-funcao'), document.getElementById('edit-admin-funcao')];
     selectsFuncao.forEach(sel => {
         if(sel) {
@@ -48,7 +46,6 @@ function popularSelectCadastroEFuncoes() {
     });
 }
 
-// Função Nova: Carrega no Admin APENAS unidades que existem no banco
 async function carregarUnidadesCadastradasNoAdmin() {
     const selAdmin = document.getElementById('select-unidade');
     if(!selAdmin) return;
@@ -56,7 +53,6 @@ async function carregarUnidadesCadastradasNoAdmin() {
     selAdmin.innerHTML = "<option value=''>Carregando...</option>";
     
     try {
-        // Busca usuários que são "escalante"
         const q = query(collection(db, "usuarios"), where("funcao", "==", "escalante"));
         const snapshot = await getDocs(q);
         
@@ -66,7 +62,6 @@ async function carregarUnidadesCadastradasNoAdmin() {
             if(data.unidade) unidadesReais.push(data.unidade);
         });
 
-        // Remove duplicatas e ordena
         const unidadesUnicas = [...new Set(unidadesReais)].sort();
 
         selAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
@@ -143,7 +138,7 @@ onAuthStateChanged(auth, async (user) => {
                 if (perfilAtual.funcao === 'admin') {
                     document.getElementById('admin-area').style.display = 'block';
                     carregarEventosAdmin();
-                    carregarUnidadesCadastradasNoAdmin(); // <--- Carrega apenas unidades reais
+                    carregarUnidadesCadastradasNoAdmin(); 
                 } else {
                     document.getElementById('unidade-area').style.display = 'block';
                     carregarPendenciasUnidade();
@@ -512,7 +507,7 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL PROFISSIONAL PADRÃO ANEXO ===
+// === EXCEL COM HORÁRIO NO CABEÇALHO ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -521,38 +516,40 @@ export async function baixarExcelDoEvento() {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data), where("status", "==", "Preenchido"));
         const snapshot = await getDocs(q);
 
-        // --- LINHA 1: TÍTULO AMARELO ---
+        // Pega horário do primeiro documento encontrado para por no cabeçalho
+        let horarioTexto = "HORÁRIO INDEFINIDO";
+        if (!snapshot.empty) {
+            const dPrimeiro = snapshot.docs[0].data();
+            if(dPrimeiro.horaInicio && dPrimeiro.horaFim) {
+                horarioTexto = `${dPrimeiro.horaInicio} às ${dPrimeiro.horaFim}`;
+            }
+        }
+
+        // LINHA 1: TÍTULO
         const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
-        titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}`;
+        // Adicionado Horário aqui
+        titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${new Date(eventoPreviewAtual.data).toLocaleDateString('pt-BR', {timeZone:'UTC'})}  /  ${horarioTexto}`;
         
-        // Estilo conforme imagem (Amarelo, Texto Preto Negrito, Centralizado)
-        titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; // Amarelo
-        titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } }; // Preto
+        titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+        titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         titleRow.height = 30;
 
-        // --- LINHA 2: CABEÇALHO CINZA ---
+        // LINHA 2: CABEÇALHO
         const headerRow = worksheet.getRow(2);
         headerRow.values = ['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO'];
         
-        // Estilo Cabeçalho (Cinza, Borda, Negrito, Centralizado)
         for(let i = 1; i <= 6; i++) {
             const cell = headerRow.getCell(i);
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Cinza Claro
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } };
             cell.font = { bold: true, color: { argb: 'FF000000' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         }
 
-        // Largura das Colunas
         worksheet.columns = [
-            { width: 8 },  // Ord
-            { width: 15 }, // Posto
-            { width: 50 }, // Nome
-            { width: 18 }, // Contato
-            { width: 15 }, // UBM
-            { width: 20 }  // Função
+            { width: 8 }, { width: 15 }, { width: 50 }, { width: 18 }, { width: 15 }, { width: 20 }
         ];
 
         let contador = 1;
@@ -563,15 +560,9 @@ export async function baixarExcelDoEvento() {
 
             militares.forEach(m => {
                 const row = worksheet.addRow([
-                    contador++, 
-                    m.posto, 
-                    '', // Placeholder para Nome Rico
-                    m.contato, 
-                    d.unidade, 
-                    d.funcao
+                    contador++, m.posto, '', m.contato, d.unidade, d.funcao
                 ]);
 
-                // RICH TEXT NO NOME (Guerra em Negrito)
                 row.getCell(3).value = {
                     richText: [
                         { text: m.guerra.toUpperCase(), font: { bold: true, name: 'Arial' } },
@@ -579,16 +570,11 @@ export async function baixarExcelDoEvento() {
                     ]
                 };
 
-                // Formatação Geral das Células da Linha
                 row.eachCell((cell) => {
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 });
-
-                // Alinhamento específico para Nome (Esquerda)
                 row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
-                
-                // Função (Amarelo se for Oficial ou Destaque - Opcional, mantendo simples por enquanto)
             });
         });
 
