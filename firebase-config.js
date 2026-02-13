@@ -1,9 +1,29 @@
-// Importações via CDN (Versão 10.7.1)
+// firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut, 
+    setPersistence, 
+    browserSessionPersistence 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    setDoc, 
+    collection, 
+    addDoc, 
+    query, 
+    where, 
+    getDocs, 
+    updateDoc, 
+    orderBy, 
+    deleteDoc // <--- Garantindo que ele é importado aqui
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// SUAS CHAVES DO PROJETO
 const firebaseConfig = {
   apiKey: "AIzaSyD09C5yNzXPKD0j009yk-1XPRKZePoQW-o",
   authDomain: "escala-unificada.firebaseapp.com",
@@ -14,12 +34,11 @@ const firebaseConfig = {
   measurementId: "G-9GF64GJ1DF"
 };
 
-// Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Exporta as ferramentas
+// Exportação unificada (Corrigindo o erro de export missing)
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
