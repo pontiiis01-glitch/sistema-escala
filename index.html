@@ -15,59 +15,85 @@
         :root {
             --primary-red: #b30000;
             --dark-red: #800000;
-            --bg-color: #f0f2f5;
+            --app-bg: #f0f2f5;
         }
 
         body {
-            background-color: var(--bg-color);
+            background-color: var(--app-bg);
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* --- CABEÇALHO (APENAS BRASÃO DA UNIDADE) --- */
+        /* --- CABEÇALHO IMPONENTE --- */
         .imposing-header {
             background: linear-gradient(135deg, var(--dark-red) 0%, var(--primary-red) 100%);
-            padding: 2rem 1rem 5rem 1rem;
+            padding: 3rem 1rem 6rem 1rem;
             text-align: center;
             color: white;
             border-bottom-left-radius: 40px;
             border-bottom-right-radius: 40px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: -50px;
+            margin-bottom: -60px; /* Puxa o conteúdo pra cima */
+            z-index: 1;
+        }
+
+        .logos-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 1.5rem;
+        }
+
+        .brasao-cbm {
+            height: 90px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+            opacity: 0.9;
         }
 
         .brasao-unidade-destaque {
-            height: 130px; /* Maior destaque */
-            filter: drop-shadow(0 8px 15px rgba(0,0,0,0.4));
-            margin-bottom: 1rem;
+            height: 140px; /* BEM GRANDE */
+            filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5));
+            transform: scale(1.1);
             transition: transform 0.3s;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            padding: 5px;
         }
-        .brasao-unidade-destaque:hover { transform: scale(1.05); }
+        .brasao-unidade-destaque:hover { transform: scale(1.15); }
 
-        .hero-title { font-weight: 900; font-size: 2rem; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.3); margin: 0; }
+        .hero-title {
+            font-weight: 900;
+            font-size: 2.2rem;
+            text-transform: uppercase;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            margin: 0;
+            letter-spacing: -1px;
+        }
 
-        /* --- CARDS --- */
+        /* --- CARDS E LOGIN --- */
         .glass-card {
             background: rgba(255, 255, 255, 0.98);
-            border-radius: 20px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
             border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            z-index: 10;
         }
 
         .form-label-bold {
             font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #555; margin-bottom: 5px; display: block;
         }
 
-        /* --- BOTÕES --- */
         .btn-imposing {
             background: var(--primary-red); color: white; border: none; font-weight: 700; text-transform: uppercase;
-            transition: all 0.2s;
+            transition: all 0.2s; padding: 12px; border-radius: 10px;
         }
-        .btn-imposing:hover { background: var(--dark-red); color: white; transform: translateY(-2px); }
+        .btn-imposing:hover { background: var(--dark-red); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(179,0,0,0.3); }
 
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -75,10 +101,12 @@
 
     <header class="imposing-header">
         <div class="container animate-in">
-            <img src="brasao-unidade.png" class="brasao-unidade-destaque" alt="Brasão Unidade">
-            
+            <div class="logos-container">
+                <img src="brasao.png" class="brasao-cbm" alt="Brasão CBMMA" title="CBMMA">
+                <img src="brasao-unidade.png" class="brasao-unidade-destaque" alt="Brasão Unidade" title="Sua Unidade">
+            </div>
             <h1 class="hero-title">Comando Operacional Metropolitano</h1>
-            <p class="small text-white-50 text-uppercase fw-bold mt-1">Gestão de Escalas Integrada</p>
+            <p class="small text-white-50 text-uppercase fw-bold mt-2 ls-1">Sistema Integrado de Gestão</p>
         </div>
     </header>
 
@@ -86,18 +114,18 @@
 
         <div id="login-area-wrapper" class="glass-card p-4 p-md-5 mx-auto fade-in" style="max-width: 450px;">
             <div id="login-form">
-                <div class="text-center mb-4"><h4 class="fw-bold text-dark">ACESSO RESTRITO</h4></div>
+                <div class="text-center mb-4"><h4 class="fw-bold text-dark">ACESSO AO SISTEMA</h4></div>
                 <div class="mb-3">
                     <label class="form-label-bold">E-mail</label>
-                    <input type="email" id="email-login" class="form-control" placeholder="usuario@cbm.ma.gov.br">
+                    <input type="email" id="email-login" class="form-control fw-bold" placeholder="usuario@cbm.ma.gov.br">
                 </div>
                 <div class="mb-4">
                     <label class="form-label-bold">Senha</label>
                     <input type="password" id="senha-login" class="form-control" placeholder="••••••••">
                 </div>
-                <button onclick="fazerLogin()" class="btn btn-imposing w-100 py-3 rounded-3">ENTRAR</button>
+                <button onclick="fazerLogin()" class="btn btn-imposing w-100 py-3">ENTRAR</button>
                 <div class="text-center mt-3 pt-3 border-top">
-                    <a href="#" onclick="alternarTela('cadastro')" class="text-danger fw-bold small text-decoration-none">Cadastrar Unidade</a>
+                    <a href="#" onclick="alternarTela('cadastro')" class="text-danger fw-bold small text-decoration-none">Cadastrar Nova Unidade</a>
                 </div>
             </div>
 
@@ -116,19 +144,19 @@
             
             <div class="bg-white p-3 rounded-4 shadow-sm d-flex justify-content-between align-items-center mb-4 border-start border-5 border-danger">
                 <div>
-                    <small class="text-muted fw-bold text-uppercase">Painel da Unidade</small>
+                    <small class="text-muted fw-bold text-uppercase">Logado como:</small>
                     <h2 id="titulo-unidade" class="fw-bold m-0 text-dark">...</h2>
                 </div>
-                <button onclick="sair()" class="btn btn-outline-danger btn-sm fw-bold px-3 rounded-pill">SAIR</button>
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm fw-bold px-4 rounded-pill">SAIR</button>
             </div>
 
             <div id="admin-area" style="display: none;">
                 <div class="row g-4">
                     <div class="col-lg-5">
                         <div class="bg-white p-4 rounded-4 shadow-sm border h-100">
-                            <h5 class="fw-black mb-4 pb-2 border-bottom text-danger"><i class="bi bi-file-earmark-plus me-2"></i>CRIAR MISSÃO</h5>
+                            <h5 class="fw-black mb-4 pb-2 border-bottom text-danger"><i class="bi bi-file-earmark-plus me-2"></i>NOVA MISSÃO</h5>
                             
-                            <div class="p-3 rounded-3 mb-3" style="background-color: #e3f2fd; border: 1px solid #90caf9;">
+                            <div class="p-3 rounded-3 mb-3" style="background-color: #f0f8ff; border: 1px solid #b3e5fc;">
                                 <h6 class="text-primary fw-bold small mb-3"><i class="bi bi-calendar-event me-1"></i> DADOS DO EVENTO</h6>
                                 <div class="mb-2">
                                     <label class="form-label-bold text-primary">Nome do Evento</label>
@@ -141,18 +169,19 @@
                                 </div>
                             </div>
 
-                            <div class="p-3 rounded-3 mb-4" style="background-color: #ffebee; border: 1px solid #ef9a9a;">
-                                <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-clock-history me-1"></i> PRAZO DE RESPOSTA</h6>
+                            <div class="p-3 rounded-3 mb-4" style="background-color: #fff0f0; border: 1px solid #ffcdd2;">
+                                <h6 class="text-danger fw-bold small mb-3"><i class="bi bi-alarm me-1"></i> PRAZO PARA O ESCALANTE</h6>
                                 <div class="row g-2">
                                     <div class="col-7"><label class="form-label-bold text-danger">Data Limite</label><input type="date" id="prazo-data" class="form-control fw-bold text-danger"></div>
                                     <div class="col-5"><label class="form-label-bold text-danger">Hora Limite</label><input type="time" id="prazo-hora" class="form-control fw-bold text-danger"></div>
                                 </div>
-                                <small class="text-muted d-block mt-2" style="font-size: 0.7rem;">O envio será bloqueado após este horário.</small>
+                                <small class="text-muted d-block mt-2 lh-1" style="font-size: 0.7rem;">O envio será bloqueado automaticamente após este horário.</small>
                             </div>
                             
                             <hr>
                             <label class="form-label-bold">Unidade</label>
                             <select id="select-unidade" class="form-select mb-2 fw-bold text-secondary"><option>Carregando...</option></select>
+                            
                             <label class="form-label-bold">Função</label>
                             <select id="select-funcao" class="form-select mb-2">
                                 <option value="SOCORRISTA">SOCORRISTA</option>
@@ -162,7 +191,9 @@
                                 <option value="MOP (MOTO)">MOP (MOTO)</option>
                                 <option value="MERGULHADOR">MERGULHADOR</option>
                                 <option value="VISTORIANTE">VISTORIANTE</option>
+                                <option value="COMBATENTE">COMBATENTE</option>
                             </select>
+                            
                             <div class="row g-2 mb-3">
                                 <div class="col-6"><input type="number" id="input-oficiais" class="form-control text-center fw-bold" placeholder="Qtd. Oficiais"></div>
                                 <div class="col-6"><input type="number" id="input-pracas" class="form-control text-center fw-bold" placeholder="Qtd. Praças"></div>
@@ -209,7 +240,7 @@
                     <div class="row">
                         <div class="col-md-8 offset-md-2">
                             <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm fs-5">
-                                <i class="bi bi-check-circle-fill me-2"></i> CONFERIR E ENVIAR
+                                <i class="bi bi-file-earmark-check-fill me-2"></i> CONFERIR E ENVIAR
                             </button>
                         </div>
                     </div>
@@ -222,7 +253,7 @@
         <div class="bg-white p-4 rounded-4 w-100 shadow-lg fade-in" style="max-width: 700px;">
             <div class="text-center mb-4">
                 <h5 class="fw-bold text-success mb-1">CONFERÊNCIA DE DADOS</h5>
-                <small class="text-muted">Verifique se o efetivo está correto. Um recibo oficial será gerado.</small>
+                <small class="text-muted">Verifique o efetivo abaixo. Se correto, confirme para gerar o recibo.</small>
             </div>
             
             <div class="bg-light p-3 border rounded mb-3">
@@ -241,8 +272,8 @@
             </div>
 
             <div class="row g-2">
-                <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3">VOLTAR / CORRIGIR</button></div>
-                <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3"><i class="bi bi-file-earmark-pdf-fill me-2"></i> CONFIRMAR E BAIXAR PDF</button></div>
+                <div class="col-6"><button onclick="fecharModalRecibo()" class="btn btn-outline-secondary w-100 fw-bold py-3">VOLTAR / EDITAR</button></div>
+                <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 fw-bold py-3"><i class="bi bi-check-lg me-2"></i> CONFIRMAR E BAIXAR PDF</button></div>
             </div>
         </div>
     </div>
@@ -250,7 +281,7 @@
     <div id="preview-modal" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center p-3" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000;">
         <div class="bg-white p-4 rounded-4 w-100 shadow-lg fade-in" style="max-width: 900px;">
             <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                <h5 class="fw-bold m-0 text-danger">Visualizar Escala</h5>
+                <h5 class="fw-bold m-0 text-danger">Escala Unificada</h5>
                 <button onclick="fecharPreview()" class="btn-close"></button>
             </div>
             <h4 class="fw-bold text-dark mb-3 text-center" id="preview-titulo">...</h4>
