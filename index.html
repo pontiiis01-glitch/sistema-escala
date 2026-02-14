@@ -168,13 +168,48 @@
         </div>
 
         <div id="dashboard-screen">
-            <div class="welcome-bar animate-up" style="background: #1c1c1e; color: white; border-radius: 22px; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-left: 6px solid var(--cbm-gold); margin-bottom: 2rem;">
-                <div>
-                    <div class="small text-white-50 fw-bold text-uppercase" style="font-size: 0.65rem;">Unidade Conectada</div>
-                    <h2 id="titulo-unidade" class="m-0 fw-black text-warning text-uppercase" style="font-size: 1.5rem;">...</h2>
-                </div>
-                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2 ios-click">SAIR <i class="bi bi-box-arrow-right ms-1"></i></button>
-            </div>
+           <div class="welcome-bar animate-up" style="
+    background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 100%); 
+    color: white; 
+    border-radius: 24px; 
+    padding: 2.5rem 1rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25); 
+    border-bottom: 4px solid var(--cbm-gold); 
+    margin-bottom: 2.5rem; 
+    position: relative;
+    overflow: hidden;
+">
+    <div style="position: absolute; top: -50px; left: -50px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0) 70%); pointer-events: none;"></div>
+
+    <div style="position: absolute; top: 15px; right: 15px;">
+        <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2 ios-click" style="font-size: 0.75rem; background: rgba(0,0,0,0.2);">
+            SAIR <i class="bi bi-box-arrow-right ms-1"></i>
+        </button>
+    </div>
+
+    <div class="mb-3">
+        <span class="badge bg-warning text-dark fw-black text-uppercase shadow-sm" style="font-size: 0.7rem; letter-spacing: 1.5px; padding: 0.5em 1em;">
+            <i class="bi bi-geo-alt-fill me-1"></i> Unidade Conectada
+        </span>
+    </div>
+    
+    <h2 id="titulo-unidade" class="m-0 fw-black text-white text-uppercase text-center" style="
+        font-size: 2.5rem; 
+        letter-spacing: -1px; 
+        text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        line-height: 1.1;
+    ">
+        ...
+    </h2>
+    
+    <div class="mt-3 text-white-50 small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
+        Sistema Operacional Ativo
+    </div>
+</div>
 
             <div id="admin-area" style="display: none;">
                 <div class="row g-4">

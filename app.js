@@ -41,10 +41,22 @@ window.formatarTelefoneInput = function(input) {
     input.value = v;
 }
 
-// === INICIALIZAÇÃO ===
+// === INICIALIZAÇÃO E CORREÇÕES VISUAIS ===
 document.addEventListener('DOMContentLoaded', () => {
     popularSelectCadastroEFuncoes();
+    aplicarCorrecoesVisuais();
 });
+
+function aplicarCorrecoesVisuais() {
+    // Injeta CSS via JS para corrigir o Z-Index do modal de edição
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #modal-editar-admin { z-index: 2050 !important; }
+        .group-header { border-left: 4px solid #b30000; padding-left: 10px; margin-bottom: 15px; margin-top: 20px; }
+        .group-header h6 { margin: 0; color: #b30000; font-weight: 900; letter-spacing: 1px; }
+    `;
+    document.head.appendChild(style);
+}
 
 function popularSelectCadastroEFuncoes() {
     const selCadastro = document.getElementById('unidade-cadastro');
@@ -223,7 +235,6 @@ async function carregarEventosAdmin() {
             return;
         }
 
-        // Ordena por data (mais recente primeiro) e limita a visualização a 50 para não travar
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
         const limiteVisualizacao = 50; 
         
@@ -307,7 +318,6 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     document.getElementById('modal-editar-admin').classList.add('active');
-    // CSS no HTML cuida do Z-Index para ficar por cima
 }
 
 export async function salvarEdicaoAdmin() {
@@ -339,26 +349,43 @@ export async function excluirEscalaIndividual(idDoc, nomeUnidade) {
     } catch(e) { alert("Erro: " + e.message); }
 }
 
+// === CORREÇÃO CRÍTICA NA EXCLUSÃO DO EVENTO ===
 export async function excluirEventoCompleto() {
     if(!eventoPreviewAtual) return;
     const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\nDigite "APAGAR" para confirmar:`);
     if(confirmar !== "APAGAR") return;
     
-    // Feedback visual imediato
-    document.getElementById('lista-eventos-admin').innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Apagando...</div>";
+    // Feedback visual imediato: Limpa a lista antes mesmo de terminar
+    const listaAdmin = document.getElementById('lista-eventos-admin');
+    listaAdmin.innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Apagando registros...</div>";
     document.getElementById('preview-modal').classList.remove('active');
 
     try {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            alert("Aviso: Nenhum documento encontrado para excluir. A lista será atualizada.");
+            carregarEventosAdmin();
+            return;
+        }
+
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
-        await batch.commit();
+        
+        await batch.commit(); // Espera realmente apagar
+        
         alert("Evento apagado com sucesso.");
-        carregarEventosAdmin();
+        
+        // Pequeno delay para garantir que o Firestore propagou a mudança antes de recarregar a lista
+        setTimeout(() => {
+            carregarEventosAdmin();
+        }, 500);
+
     } catch(e) { 
+        console.error(e);
         alert("Erro ao excluir: " + e.message); 
-        carregarEventosAdmin(); // Recarrega mesmo se der erro para restaurar a lista
+        carregarEventosAdmin(); 
     }
 }
 
@@ -377,7 +404,6 @@ async function carregarPendenciasUnidade() {
         snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
         docs.sort((a,b) => new Date(a.data) - new Date(b.data));
 
-        // Separando Pendentes e Concluídos
         const pendentes = docs.filter(d => d.status === "Pendente");
         const concluidos = docs.filter(d => d.status !== "Pendente");
 
@@ -404,7 +430,7 @@ function gerarCardMissao(d, isPendente) {
     let textoPrazo = "";
     let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
     let btnText = isPendente ? "RESPONDER AGORA" : "VER / EDITAR";
-    let cardOpacity = isPendente ? "1" : "0.85"; // Deixa os concluídos levemente transparentes
+    let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
         const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
@@ -539,7 +565,7 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL INTELIGENTE: CORREÇÃO DO NEGRITO E ERRO DE ARQUIVO ===
+// === EXCEL INTELIGENTE: NEGRITO RESILIENTE ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -585,7 +611,7 @@ export async function baixarExcelDoEvento() {
             militares.forEach(m => {
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
                 
-                // LÓGICA DE NEGRITO CORRIGIDA (EVITA ERRO DE ARQUIVO CORROMPIDO)
+                // LÓGICA DE NEGRITO (IMPEDE ERRO DE ARQUIVO)
                 const nomeUpper = m.nome.toUpperCase().trim();
                 const guerraUpper = m.guerra.toUpperCase().trim();
                 const indexGuerra = nomeUpper.indexOf(guerraUpper);
@@ -593,20 +619,14 @@ export async function baixarExcelDoEvento() {
                 let richTextValue = [];
 
                 if (indexGuerra !== -1 && guerraUpper.length > 0) {
-                    // Parte antes do nome (só adiciona se não for vazio)
                     if (indexGuerra > 0) {
                         richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
                     }
-                    
-                    // O nome de guerra (sempre negrito)
                     richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
-
-                    // Parte depois do nome (só adiciona se não for vazio)
                     if (indexGuerra + guerraUpper.length < nomeUpper.length) {
                         richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
                     }
                 } else {
-                    // Se não encontrou, texto normal para evitar array vazio ou erros
                     richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
                 }
 
