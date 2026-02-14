@@ -34,13 +34,10 @@ function formatarDataLocal(dataString) {
 
 // Formata telefone para 98 9XXXX-XXXX
 window.formatarTelefoneInput = function(input) {
-    let v = input.value.replace(/\D/g, ""); // Remove tudo que não é dígito
-    v = v.substring(0, 11); // Limita tamanho
-    
-    // Máscara 98 9XXXX-XXXX
+    let v = input.value.replace(/\D/g, ""); 
+    v = v.substring(0, 11); 
     if (v.length > 2) v = v.replace(/^(\d\d)(\d)/g, "$1 $2"); 
     if (v.length > 7) v = v.replace(/(\d{5})(\d)/, "$1-$2"); 
-    
     input.value = v;
 }
 
@@ -219,10 +216,18 @@ async function carregarEventosAdmin() {
             g.total++;
             if (d.status === "Preenchido") g.respondidos++;
         });
+        
         lista.innerHTML = "";
-        if (grupos.size === 0) lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>";
+        if (grupos.size === 0) {
+            lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>";
+            return;
+        }
+
+        // Ordena por data (mais recente primeiro) e limita a visualização a 50 para não travar
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
-        gruposArray.forEach(info => {
+        const limiteVisualizacao = 50; 
+        
+        gruposArray.slice(0, limiteVisualizacao).forEach(info => {
             const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
             lista.innerHTML += `
@@ -235,6 +240,11 @@ async function carregarEventosAdmin() {
                     <div class="progress" style="height: 6px; border-radius: 10px;"><div class="progress-bar bg-success" style="width: ${percentual}%; border-radius: 10px;"></div></div>
                 </div>`;
         });
+        
+        if (gruposArray.length > limiteVisualizacao) {
+            lista.innerHTML += `<div class="text-center py-3 small text-muted">Exibindo os ${limiteVisualizacao} mais recentes de ${gruposArray.length}.</div>`;
+        }
+
     } catch(e) { console.error(e); }
 }
 
@@ -297,6 +307,7 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     document.getElementById('modal-editar-admin').classList.add('active');
+    // CSS no HTML cuida do Z-Index para ficar por cima
 }
 
 export async function salvarEdicaoAdmin() {
@@ -332,16 +343,23 @@ export async function excluirEventoCompleto() {
     if(!eventoPreviewAtual) return;
     const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\nDigite "APAGAR" para confirmar:`);
     if(confirmar !== "APAGAR") return;
+    
+    // Feedback visual imediato
+    document.getElementById('lista-eventos-admin').innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Apagando...</div>";
+    document.getElementById('preview-modal').classList.remove('active');
+
     try {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        alert("Evento apagado.");
-        document.getElementById('preview-modal').classList.remove('active');
+        alert("Evento apagado com sucesso.");
         carregarEventosAdmin();
-    } catch(e) { alert("Erro ao excluir: " + e.message); }
+    } catch(e) { 
+        alert("Erro ao excluir: " + e.message); 
+        carregarEventosAdmin(); // Recarrega mesmo se der erro para restaurar a lista
+    }
 }
 
 // ================= ESCALANTE =================
@@ -359,48 +377,67 @@ async function carregarPendenciasUnidade() {
         snapshot.forEach(d => docs.push({id: d.id, ...d.data()}));
         docs.sort((a,b) => new Date(a.data) - new Date(b.data));
 
-        docs.forEach(d => {
-            const cota = d.cota || { oficial: 0, praca: 0 }; 
-            const isPendente = d.status === "Pendente";
-            let isBloqueado = false;
-            let textoPrazo = "";
-            let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
-            let btnText = isPendente ? "RESPONDER AGORA" : "EDITAR ENVIO";
-            
-            if (d.prazoData) {
-                const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
-                const dataLimite = new Date(dataLimiteStr);
-                const hoje = new Date();
+        // Separando Pendentes e Concluídos
+        const pendentes = docs.filter(d => d.status === "Pendente");
+        const concluidos = docs.filter(d => d.status !== "Pendente");
 
-                if (hoje > dataLimite) {
-                    isBloqueado = true;
-                    btnClass = "btn-secondary disabled";
-                    btnText = "PRAZO ENCERRADO";
-                    textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO EM ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
-                } else {
-                    textoPrazo = `<div class="text-dark small mt-2 bg-warning bg-opacity-25 p-1 rounded"><i class="bi bi-clock-history"></i> Prazo: ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
-                }
-            }
+        // Renderiza PENDENTES
+        if(pendentes.length > 0) {
+            lista.innerHTML += `<div class="col-12"><h6 class="text-danger fw-black mb-2 text-uppercase ls-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>PENDÊNCIAS (Prioridade)</h6></div>`;
+            pendentes.forEach(d => lista.innerHTML += gerarCardMissao(d, true));
+        } else {
+            lista.innerHTML += `<div class="col-12 text-center py-4 bg-white rounded-4 shadow-sm mb-4"><i class="bi bi-check-circle-fill text-success display-4"></i><p class="mt-2 fw-bold text-muted">Tudo em dia!</p></div>`;
+        }
 
-            lista.innerHTML += `
-                <div class="col-md-6 col-lg-4 animate-up">
-                    <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column position-relative mission-card">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="badge bg-dark">${formatarDataLocal(d.data)}</span>
-                            <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${d.status}</span>
-                        </div>
-                        <h5 class="fw-bold mb-0 text-dark text-uppercase">${d.evento}</h5>
-                        <small class="text-muted mb-2 d-block">${d.horaInicio} às ${d.horaFim}</small>
-                        <div class="bg-light p-3 rounded border text-center my-2">
-                            <strong class="d-block text-primary">${d.funcao}</strong>
-                            <div class="small text-muted">Cota: ${cota.oficial} Of / ${cota.praca} Pç</div>
-                        </div>
-                        ${textoPrazo}
-                        <button onclick="window.app.abrirEdicao('${d.id}')" class="btn ${btnClass} w-100 fw-bold mt-auto py-3 rounded-3 shadow-sm ios-click" ${isBloqueado ? 'disabled' : ''}>${btnText}</button>
-                    </div>
-                </div>`;
-        });
+        // Renderiza HISTÓRICO
+        if(concluidos.length > 0) {
+            lista.innerHTML += `<div class="col-12 mt-4"><h6 class="text-muted fw-bold mb-2 text-uppercase ls-1 border-top pt-4">Histórico / Enviados</h6></div>`;
+            concluidos.forEach(d => lista.innerHTML += gerarCardMissao(d, false));
+        }
+
     } catch(e) { console.error(e); }
+}
+
+function gerarCardMissao(d, isPendente) {
+    const cota = d.cota || { oficial: 0, praca: 0 }; 
+    let isBloqueado = false;
+    let textoPrazo = "";
+    let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
+    let btnText = isPendente ? "RESPONDER AGORA" : "VER / EDITAR";
+    let cardOpacity = isPendente ? "1" : "0.85"; // Deixa os concluídos levemente transparentes
+    
+    if (d.prazoData) {
+        const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
+        const dataLimite = new Date(dataLimiteStr);
+        const hoje = new Date();
+
+        if (hoje > dataLimite) {
+            isBloqueado = true;
+            btnClass = "btn-secondary disabled";
+            btnText = "PRAZO ENCERRADO";
+            textoPrazo = `<div class="text-danger fw-bold small mt-2"><i class="bi bi-lock-fill"></i> ENCERRADO EM ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
+        } else {
+            textoPrazo = `<div class="text-dark small mt-2 bg-warning bg-opacity-25 p-1 rounded"><i class="bi bi-clock-history"></i> Prazo: ${formatarDataLocal(d.prazoData)} às ${d.prazoHora}</div>`;
+        }
+    }
+
+    return `
+        <div class="col-md-6 col-lg-4 animate-up">
+            <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column position-relative mission-card" style="opacity: ${cardOpacity}">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="badge bg-dark">${formatarDataLocal(d.data)}</span>
+                    <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${d.status}</span>
+                </div>
+                <h5 class="fw-bold mb-0 text-dark text-uppercase">${d.evento}</h5>
+                <small class="text-muted mb-2 d-block">${d.horaInicio} às ${d.horaFim}</small>
+                <div class="bg-light p-3 rounded border text-center my-2">
+                    <strong class="d-block text-primary">${d.funcao}</strong>
+                    <div class="small text-muted">Cota: ${cota.oficial} Of / ${cota.praca} Pç</div>
+                </div>
+                ${textoPrazo}
+                <button onclick="window.app.abrirEdicao('${d.id}')" class="btn ${btnClass} w-100 fw-bold mt-auto py-3 rounded-3 shadow-sm ios-click" ${isBloqueado ? 'disabled' : ''}>${btnText}</button>
+            </div>
+        </div>`;
 }
 
 export async function abrirEdicao(id) {
@@ -450,11 +487,10 @@ export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
     rows.forEach(row => {
-        // FORÇA UPPERCASE AQUI TAMBÉM
         const posto = row.querySelector('.campo-posto').value.trim().toUpperCase();
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
-        const contato = row.querySelector('.campo-tel').value.trim(); // Contato mantém formatação
+        const contato = row.querySelector('.campo-tel').value.trim(); 
         if(posto && nome && guerra) lista.push({ posto, nome, guerra, contato });
     });
     if(lista.length === 0) return alert("Preencha os dados dos militares.");
@@ -503,7 +539,7 @@ function gerarReciboPDFProfissional(listaMilitares) {
     doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
 }
 
-// === EXCEL INTELIGENTE: NEGRITO DENTRO DO NOME (SEM REPETIR) ===
+// === EXCEL INTELIGENTE: CORREÇÃO DO NEGRITO E ERRO DE ARQUIVO ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -549,29 +585,28 @@ export async function baixarExcelDoEvento() {
             militares.forEach(m => {
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
                 
-                // LÓGICA DE NEGRITO (Rich Text)
-                const nomeUpper = m.nome.toUpperCase();
-                const guerraUpper = m.guerra.toUpperCase();
+                // LÓGICA DE NEGRITO CORRIGIDA (EVITA ERRO DE ARQUIVO CORROMPIDO)
+                const nomeUpper = m.nome.toUpperCase().trim();
+                const guerraUpper = m.guerra.toUpperCase().trim();
                 const indexGuerra = nomeUpper.indexOf(guerraUpper);
 
                 let richTextValue = [];
 
-                if (indexGuerra !== -1) {
-                    // SE ACHOU O NOME DE GUERRA DENTRO DO NOME COMPLETO:
-                    // Parte antes do nome de guerra
-                    const part1 = nomeUpper.substring(0, indexGuerra);
-                    // O nome de guerra em si
-                    const part2 = nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length);
-                    // Parte depois do nome de guerra
-                    const part3 = nomeUpper.substring(indexGuerra + guerraUpper.length);
+                if (indexGuerra !== -1 && guerraUpper.length > 0) {
+                    // Parte antes do nome (só adiciona se não for vazio)
+                    if (indexGuerra > 0) {
+                        richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
+                    }
+                    
+                    // O nome de guerra (sempre negrito)
+                    richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
 
-                    richTextValue = [
-                        { text: part1, font: { bold: false, name: 'Arial' } },
-                        { text: part2, font: { bold: true, name: 'Arial' } }, // SÓ ESSE EM NEGRITO
-                        { text: part3, font: { bold: false, name: 'Arial' } }
-                    ];
+                    // Parte depois do nome (só adiciona se não for vazio)
+                    if (indexGuerra + guerraUpper.length < nomeUpper.length) {
+                        richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
+                    }
                 } else {
-                    // Se não achou (erro de digitação do usuário), mostra só o nome normal
+                    // Se não encontrou, texto normal para evitar array vazio ou erros
                     richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
                 }
 
