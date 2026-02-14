@@ -350,41 +350,63 @@ export async function excluirEscalaIndividual(idDoc, nomeUnidade) {
 }
 
 // === CORREÇÃO CRÍTICA NA EXCLUSÃO DO EVENTO ===
+// Substitua a função antiga por esta nova versão mais robusta
 export async function excluirEventoCompleto() {
-    if(!eventoPreviewAtual) return;
-    const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\nDigite "APAGAR" para confirmar:`);
-    if(confirmar !== "APAGAR") return;
+    // Verificação de segurança
+    if(!eventoPreviewAtual) return console.error("Erro: Nenhum evento selecionado.");
+
+    // 1. Confirmação (Aceita "APAGAR", "apagar", "Apagar")
+    const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\n\nDigite "APAGAR" para confirmar:`);
     
-    // Feedback visual imediato: Limpa a lista antes mesmo de terminar
-    const listaAdmin = document.getElementById('lista-eventos-admin');
-    listaAdmin.innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Apagando registros...</div>";
+    if (!confirmar || confirmar.toUpperCase() !== "APAGAR") {
+        return alert("Operação cancelada. Você deve digitar APAGAR para confirmar.");
+    }
+    
+    // 2. AÇÃO VISUAL IMEDIATA (Fecha o modal na hora para não travar a tela)
     document.getElementById('preview-modal').classList.remove('active');
+    
+    // Mostra que está carregando na lista de trás
+    const listaAdmin = document.getElementById('lista-eventos-admin');
+    if(listaAdmin) {
+        listaAdmin.innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Processando exclusão no Banco de Dados...</div>";
+    }
 
     try {
-        const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
+        console.log(`Iniciando exclusão: ${eventoPreviewAtual.nome} | ${eventoPreviewAtual.data}`);
+
+        // 3. Busca exata no banco
+        const q = query(
+            collection(db, "escalas"), 
+            where("evento", "==", eventoPreviewAtual.nome), 
+            where("data", "==", eventoPreviewAtual.data)
+        );
+        
         const snapshot = await getDocs(q);
         
+        // Se não achar nada no banco, apenas recarrega a lista
         if (snapshot.empty) {
-            alert("Aviso: Nenhum documento encontrado para excluir. A lista será atualizada.");
+            console.warn("Documentos não encontrados no banco (talvez já apagados).");
+            alert("Registro limpo com sucesso.");
             carregarEventosAdmin();
             return;
         }
 
+        // 4. Executa a exclusão em lote (Batch Delete)
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
         
-        await batch.commit(); // Espera realmente apagar
+        await batch.commit(); 
         
-        alert("Evento apagado com sucesso.");
+        console.log("Exclusão finalizada com sucesso.");
+        alert("Histórico apagado definitivamente.");
         
-        // Pequeno delay para garantir que o Firestore propagou a mudança antes de recarregar a lista
-        setTimeout(() => {
-            carregarEventosAdmin();
-        }, 500);
+        // 5. Atualiza a lista final
+        carregarEventosAdmin();
 
     } catch(e) { 
-        console.error(e);
+        console.error("Erro crítico ao excluir:", e);
         alert("Erro ao excluir: " + e.message); 
+        // Mesmo com erro, tenta recarregar a lista para não ficar travado
         carregarEventosAdmin(); 
     }
 }
