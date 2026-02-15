@@ -5,7 +5,7 @@ import { saveAs } from "https://cdn.skypack.dev/file-saver";
 // === LISTAS E DADOS ===
 const UNIDADES_CBMMA_FIXAS = [
     "1 BBM", "2 BBM", "1 CIEBM", "10 BBM", "13 BBM", "16 CIBM", "BBS", "BBA", "BMUS","BBEM","BBMAR", "CGCS", "DEP", "DAT", "DP", "DF", "DPM", "DAL", "CPP", "CPO", 
-    "1 Seção", "2 Seção", "3 Seção", "4 Seção", "CAPS", "CRF", "CEPDECMA", "ASPIRANTES", "CADETES", "DER", 
+    "1 Seção", "2 Seção", "3 Seção", "4 Seção", "CAPS", "CRF", "CEPDECMA", "DER", 
     "CMCB I", "CMCB II - SJR", "CMCB XII - PAÇO", "CMCB XIII - GUANABARA", "CMCB XXVI - PIO XII", 
     "ABMJM", "GAB CMT GERAL", "GAB CMT ADJUNTO"
 ];
@@ -591,6 +591,7 @@ export async function consultarAutenticidade() {
                     <i class="bi bi-x-circle-fill display-4 d-block mb-2"></i>
                     <strong class="d-block text-uppercase">Documento Inválido</strong>
                     <span class="small">Este código não consta nos registros oficiais.</span>
+                    <button onclick="fecharModal('modal-validador')" class="btn btn-light w-100 mt-3 fw-bold rounded-pill text-uppercase">Fechar</button>
                 </div>`;
         } else {
             const d = docSnap.data();
@@ -608,6 +609,7 @@ export async function consultarAutenticidade() {
                     <div class="mt-2 text-center text-muted" style="font-size: 0.65rem;">
                         <i class="bi bi-lock-fill"></i> Dados pessoais protegidos pela LGPD.
                     </div>
+                    <button onclick="fecharModal('modal-validador')" class="btn btn-dark w-100 mt-3 fw-bold rounded-pill text-uppercase">Fechar</button>
                 </div>`;
         }
     } catch (e) { 
