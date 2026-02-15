@@ -25,7 +25,19 @@ let listaOrdensTemporaria = [];
 let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
 
-// === UTILITÁRIOS ===
+// === UTILITÁRIOS & SEGURANÇA ===
+
+// FUNÇÃO DE SEGURANÇA (NOVA): Limpa textos para evitar injeção de código
+function escapar(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function formatarDataLocal(dataString) {
     if(!dataString) return "";
     const partes = dataString.split('-'); 
@@ -83,7 +95,7 @@ async function carregarUnidadesCadastradasNoAdmin() {
         const unidadesUnicas = [...new Set(unidadesReais)].sort();
         selAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
         if(unidadesUnicas.length === 0) selAdmin.innerHTML += "<option disabled>Nenhuma unidade cadastrada</option>";
-        else unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${u}">${u}</option>`);
+        else unidadesUnicas.forEach(u => selAdmin.innerHTML += `<option value="${escapar(u)}">${escapar(u)}</option>`);
     } catch (e) { console.error(e); selAdmin.innerHTML = "<option value=''>Erro ao carregar</option>"; }
 }
 
@@ -193,10 +205,11 @@ function atualizarTabelaOrdens() {
         if(c.especial > 0) resumo.push(`${c.especial} ESP`);
         if(c.praca > 0) resumo.push(`${c.praca} PÇ`);
 
+        // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
         corpo.innerHTML += `
             <tr class="border-bottom">
-                <td class="fw-bold">${item.unidade}</td>
-                <td><span class="badge bg-light text-dark border">${item.funcao}</span></td>
+                <td class="fw-bold">${escapar(item.unidade)}</td>
+                <td><span class="badge bg-light text-dark border">${escapar(item.funcao)}</span></td>
                 <td class="small fw-bold text-muted">${resumo.join(' + ')}</td>
                 <td class="text-end"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger ios-click"><i class="bi bi-x-circle-fill"></i></button></td>
             </tr>`;
@@ -224,14 +237,14 @@ export async function dispararSolicitacao() {
                 evento: evento.toUpperCase(), data, horaInicio, horaFim,
                 prazoData, prazoHora: prazoHora || "23:59",
                 unidade: ordem.unidade, funcao: ordem.funcao,
-                cota: ordem.cota, // Salva o objeto completo {superior, intermediario...}
+                cota: ordem.cota, 
                 status: "Pendente", militares: "[]", criadoEm: new Date()
             });
         });
         await Promise.all(promises);
         alert(`Sucesso! Envios realizados.`);
         limparOrdens(); carregarEventosAdmin();
-    } catch (e) { alert("Erro: " + e.message); }
+    } catch (e) { alert("Erro de Permissão ou Conexão: " + e.message); }
 }
 
 async function carregarEventosAdmin() {
@@ -263,10 +276,12 @@ async function carregarEventosAdmin() {
         gruposArray.slice(0, limiteVisualizacao).forEach(info => {
             const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
+            
+            // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
             lista.innerHTML += `
-                <div class="list-group-item p-3 border-bottom ios-click" onclick="window.app.abrirPreview('${info.evento}', '${info.data}')">
+                <div class="list-group-item p-3 border-bottom ios-click" onclick="window.app.abrirPreview('${escapar(info.evento)}', '${info.data}')">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div><strong class="text-dark d-block text-uppercase">${info.evento}</strong><small class="text-muted fw-bold">${dataBr}</small></div>
+                        <div><strong class="text-dark d-block text-uppercase">${escapar(info.evento)}</strong><small class="text-muted fw-bold">${dataBr}</small></div>
                         <i class="bi bi-chevron-right text-muted"></i>
                     </div>
                     <div class="d-flex justify-content-between small text-muted align-items-center mb-1"><span>Progresso</span><span>${info.respondidos}/${info.total}</span></div>
@@ -306,44 +321,43 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             if(c.subalterno) resumoCota.push(`${c.subalterno} Sub`);
             if(c.especial) resumoCota.push(`${c.especial} Esp`);
             if(c.praca) resumoCota.push(`${c.praca} Pç`);
-            // Fallback
             if(resumoCota.length === 0) {
                  if(c.oficial) resumoCota.push(`${c.oficial} Of`);
                  if(c.praca) resumoCota.push(`${c.praca} Pç`);
             }
             const textoCota = resumoCota.join(' / ');
-
             const jsonCota = JSON.stringify(c).replace(/"/g, "&quot;");
             
-            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
-            const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
+            // APLICAÇÃO DE SEGURANÇA NOS BOTÕES E DADOS
+            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '${escapar(d.funcao)}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
+            const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${escapar(d.unidade)}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
             if(d.status === "Pendente") {
                 html += `
                 <tr class="table-danger border-bottom">
                     <td class="text-center fw-bold text-muted">-</td>
                     <td colspan="3" class="small text-danger fw-bold align-middle">
-                        <i class="bi bi-exclamation-circle-fill me-1"></i> PENDENTE: ${d.unidade}
+                        <i class="bi bi-exclamation-circle-fill me-1"></i> PENDENTE: ${escapar(d.unidade)}
                         <br><span class="text-muted fw-normal ms-3">Cota: ${textoCota}</span>
                     </td>
-                    <td class="align-middle">${d.funcao}</td>
+                    <td class="align-middle">${escapar(d.funcao)}</td>
                     <td class="text-end align-middle">${btnEdit}${btnDelete}</td>
                 </tr>`;
             } else {
                 militares.forEach((m, index) => {
                     html += `<tr>
                         <td class="fw-bold text-center text-muted">${index + 1}</td>
-                        <td><span class="fw-bold">${m.posto}</span> ${m.guerra}</td>
-                        <td class="small text-muted">${m.contato}</td>
-                        <td class="fw-bold text-dark">${d.unidade}</td>
-                        <td><span class="badge bg-light text-dark border">${d.funcao}</span></td>
+                        <td><span class="fw-bold">${escapar(m.posto)}</span> ${escapar(m.guerra)}</td>
+                        <td class="small text-muted">${escapar(m.contato)}</td>
+                        <td class="fw-bold text-dark">${escapar(d.unidade)}</td>
+                        <td><span class="badge bg-light text-dark border">${escapar(d.funcao)}</span></td>
                         <td class="text-end">${index === 0 ? btnEdit + btnDelete : ''}</td>
                     </tr>`;
                 });
             }
         });
         corpo.innerHTML = html;
-    } catch(e) { console.error(e); corpo.innerHTML = "<tr><td colspan='6'>Erro ao carregar.</td></tr>"; }
+    } catch(e) { console.error(e); corpo.innerHTML = "<tr><td colspan='6'>Erro ao carregar ou Sem Permissão.</td></tr>"; }
 }
 
 export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
@@ -459,14 +473,12 @@ async function carregarPendenciasUnidade() {
 
 function gerarCardMissao(d, isPendente) {
     const c = d.cota || {};
-    // Gera resumo texto
     let resumo = [];
     if(c.superior) resumo.push(`${c.superior} Sup`);
     if(c.intermediario) resumo.push(`${c.intermediario} Int`);
     if(c.subalterno) resumo.push(`${c.subalterno} Sub`);
     if(c.especial) resumo.push(`${c.especial} Esp`);
     if(c.praca) resumo.push(`${c.praca} Pç`);
-    // Fallback antigo
     if(resumo.length === 0) {
         if(c.oficial) resumo.push(`${c.oficial} Of`);
         if(c.praca) resumo.push(`${c.praca} Pç`);
@@ -492,17 +504,18 @@ function gerarCardMissao(d, isPendente) {
         }
     }
 
+    // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
     return `
         <div class="col-md-6 col-lg-4 animate-up">
             <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column position-relative mission-card" style="opacity: ${cardOpacity}">
                 <div class="d-flex justify-content-between mb-2">
                     <span class="badge bg-dark">${formatarDataLocal(d.data)}</span>
-                    <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${d.status}</span>
+                    <span class="badge ${isPendente ? 'bg-warning text-dark' : 'bg-success'}">${escapar(d.status)}</span>
                 </div>
-                <h5 class="fw-bold mb-0 text-dark text-uppercase">${d.evento}</h5>
+                <h5 class="fw-bold mb-0 text-dark text-uppercase">${escapar(d.evento)}</h5>
                 <small class="text-muted mb-2 d-block">${d.horaInicio} às ${d.horaFim}</small>
                 <div class="bg-light p-3 rounded border text-center my-2">
-                    <strong class="d-block text-primary">${d.funcao}</strong>
+                    <strong class="d-block text-primary">${escapar(d.funcao)}</strong>
                     <div class="small text-muted">${resumo.join(' / ')}</div>
                 </div>
                 ${textoPrazo}
@@ -524,7 +537,7 @@ export async function abrirEdicao(id) {
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
 
-    // --- INÍCIO DA ÁREA DE EXEMPLOS ---
+    // --- ÁREA DE EXEMPLOS ---
     container.innerHTML += `
         <div class="mb-4 text-center">
             <span class="text-muted small fw-bold text-uppercase d-block mb-2">Dúvidas no preenchimento?</span>
@@ -552,7 +565,6 @@ export async function abrirEdicao(id) {
             </div>
         </div>
     `;
-    // --- FIM DA ÁREA DE EXEMPLOS ---
     
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
@@ -576,21 +588,22 @@ export async function abrirEdicao(id) {
 }
 
 function gerarHtmlMilitar(index, tipo, dados) {
+    // Usamos 'escapar' dentro dos atributos value para evitar que aspas quebrem o HTML
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
         <div class="row g-2">
             <div class="col-4 col-md-3">
-                <input type="text" class="form-control campo-posto fw-bold" placeholder="Posto" value="${dados.posto || ''}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-posto fw-bold" placeholder="Posto" value="${escapar(dados.posto || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-8 col-md-5">
-                <input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${dados.nome || ''}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${escapar(dados.nome || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-6 col-md-4">
-                <input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="Nome Guerra" value="${dados.guerra || ''}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="Nome Guerra" value="${escapar(dados.guerra || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-6 col-md-12">
-                <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${dados.contato || ''}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
+                <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${escapar(dados.contato || '')}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
             </div>
         </div>
     </div>`;
@@ -613,7 +626,6 @@ export async function consultarAutenticidade() {
     divResult.innerHTML = "<div class='text-center text-muted'><span class='spinner-border spinner-border-sm me-2'></span>Consultando base pública...</div>";
 
     try {
-        // Busca direta pelo ID na coleção PÚBLICA (validacoes_publicas)
         const docRef = doc(db, "validacoes_publicas", codigo);
         const docSnap = await getDoc(docRef);
 
@@ -628,14 +640,16 @@ export async function consultarAutenticidade() {
         } else {
             const d = docSnap.data();
             const dataValidacao = d.dataValidacao ? new Date(d.dataValidacao).toLocaleString() : "Data desconhecida";
+            
+            // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
             divResult.innerHTML = `
                 <div class="alert alert-success text-center border-0 shadow-sm rounded-4">
                     <i class="bi bi-patch-check-fill display-4 d-block mb-2"></i>
                     <strong class="d-block text-uppercase mb-2">Documento Autêntico</strong>
                     <div class="text-start bg-white p-3 rounded-3 border small text-muted">
-                        <strong>Evento:</strong> ${d.evento}<br>
-                        <strong>Unidade:</strong> ${d.unidade}<br>
-                        <strong>Situação:</strong> ${d.status}<br>
+                        <strong>Evento:</strong> ${escapar(d.evento)}<br>
+                        <strong>Unidade:</strong> ${escapar(d.unidade)}<br>
+                        <strong>Situação:</strong> ${escapar(d.status)}<br>
                         <strong>Emitido em:</strong> ${dataValidacao}
                     </div>
                     <div class="mt-2 text-center text-muted" style="font-size: 0.65rem;">
@@ -667,7 +681,8 @@ export function abrirPreviaRecibo() {
     document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
     const tbody = document.getElementById('recibo-lista-corpo');
     tbody.innerHTML = "";
-    lista.forEach(m => tbody.innerHTML += `<tr><td>${m.posto}</td><td><strong>${m.guerra}</strong></td><td>${m.nome}</td><td>${m.contato}</td></tr>`);
+    // Aqui usamos innerHTML para preview, então usamos escapar
+    lista.forEach(m => tbody.innerHTML += `<tr><td>${escapar(m.posto)}</td><td><strong>${escapar(m.guerra)}</strong></td><td>${escapar(m.nome)}</td><td>${escapar(m.contato)}</td></tr>`);
     document.getElementById('recibo-modal').classList.add('active');
 }
 
@@ -701,7 +716,7 @@ export async function confirmarEnvioRecibo() {
         gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth);
         alert("Enviado, Autenticado e Protegido!");
         window.location.reload();
-    } catch (e) { alert("Erro: " + e.message); }
+    } catch (e) { alert("Erro ao enviar. Verifique se você é da unidade correta.\nDetalhe: " + e.message); }
 }
 
 function gerarReciboPDFProfissional(listaMilitares, codigoAuth) {
