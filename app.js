@@ -511,6 +511,7 @@ function gerarCardMissao(d, isPendente) {
         </div>`;
 }
 
+// === EDIÇÃO COM EXEMPLOS VISUAIS (Accordion) ===
 export async function abrirEdicao(id) {
     escalaSelecionadaId = id;
     const docSnap = await getDoc(doc(db, "escalas", id));
@@ -522,6 +523,37 @@ export async function abrirEdicao(id) {
     
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
+
+    // --- INÍCIO DA ÁREA DE EXEMPLOS ---
+    container.innerHTML += `
+        <div class="mb-4 text-center">
+            <span class="text-muted small fw-bold text-uppercase d-block mb-2">Dúvidas no preenchimento?</span>
+            <button onclick="let el = document.getElementById('box-exemplos'); el.style.display = el.style.display === 'none' ? 'block' : 'none';" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold small ios-click" style="font-size: 0.7rem;">
+                <i class="bi bi-info-circle-fill me-1"></i> VER PADRÃO DE POSTOS
+            </button>
+            <div id="box-exemplos" class="mt-3 p-3 bg-white rounded-4 border shadow-sm animate-up" style="display: none; text-align: left;">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>
+                    <span class="fw-bold text-dark small text-uppercase">Modelos de Referência</span>
+                </div>
+                <p class="text-muted small mb-3" style="font-size: 0.75rem;">Utilize as siglas abaixo para padronizar o documento (Exemplos ilustrativos):</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-light text-secondary border">TEN CEL QOC</span>
+                    <span class="badge bg-light text-secondary border">MAJ QOC / QOE / QOA</span>
+                    <span class="badge bg-light text-secondary border">CAP QOC / QOA / QOE</span>
+                    <span class="badge bg-light text-secondary border">1 TEN QOC / QOA / QOE</span>
+                    <span class="badge bg-light text-secondary border">ASP OF BM</span>
+                    <span class="badge bg-light text-secondary border">CAD BM/3</span>
+                    <span class="badge bg-light text-secondary border">ST BM</span>
+                    <span class="badge bg-light text-secondary border">2 SGT BM</span>
+                    <span class="badge bg-light text-secondary border">CB BM</span>
+                    <span class="badge bg-light text-secondary border">SD BM</span>
+                </div>
+            </div>
+        </div>
+    `;
+    // --- FIM DA ÁREA DE EXEMPLOS ---
+    
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
     
