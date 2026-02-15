@@ -1,4 +1,4 @@
-import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc, writeBatch } from './firebase-config.js';
+import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc, writeBatch, limit } from './firebase-config.js';
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
@@ -27,7 +27,7 @@ let idEdicaoAdmin = null;
 
 // === UTILITÁRIOS & SEGURANÇA ===
 
-// FUNÇÃO DE SEGURANÇA (NOVA): Limpa textos para evitar injeção de código
+// FUNÇÃO DE SEGURANÇA: Limpa textos para evitar injeção de código (XSS)
 function escapar(str) {
     if (!str) return "";
     return String(str)
@@ -231,27 +231,47 @@ export async function dispararSolicitacao() {
     if (!prazoData) return alert("Defina o Prazo.");
     if (listaOrdensTemporaria.length === 0) return alert("Adicione unidades.");
 
+    // [CORREÇÃO: BATCH WRITE] - Garante que todas as ordens sejam enviadas ou nenhuma
     try {
-        const promises = listaOrdensTemporaria.map(ordem => {
-            return addDoc(collection(db, "escalas"), {
-                evento: evento.toUpperCase(), data, horaInicio, horaFim,
-                prazoData, prazoHora: prazoHora || "23:59",
-                unidade: ordem.unidade, funcao: ordem.funcao,
+        const batch = writeBatch(db);
+        
+        listaOrdensTemporaria.forEach(ordem => {
+            const novaRef = doc(collection(db, "escalas")); // Cria ID automático
+            batch.set(novaRef, {
+                evento: evento.toUpperCase(), 
+                data, 
+                horaInicio, 
+                horaFim,
+                prazoData, 
+                prazoHora: prazoHora || "23:59",
+                unidade: ordem.unidade, 
+                funcao: ordem.funcao,
                 cota: ordem.cota, 
-                status: "Pendente", militares: "[]", criadoEm: new Date()
+                status: "Pendente", 
+                militares: "[]", 
+                criadoEm: new Date()
             });
         });
-        await Promise.all(promises);
-        alert(`Sucesso! Envios realizados.`);
-        limparOrdens(); carregarEventosAdmin();
-    } catch (e) { alert("Erro de Permissão ou Conexão: " + e.message); }
+
+        await batch.commit(); // Executa o envio em lote
+        alert(`Sucesso! Todas as solicitações foram enviadas.`);
+        limparOrdens(); 
+        carregarEventosAdmin();
+    } catch (e) { 
+        console.error(e);
+        alert("Erro no envio em massa: " + e.message); 
+    }
 }
 
 async function carregarEventosAdmin() {
     const lista = document.getElementById('lista-eventos-admin');
     lista.innerHTML = "<div class='text-center py-3'><span class='spinner-border text-danger'></span></div>";
     try {
-        const q = query(collection(db, "escalas")); 
+        // [CORREÇÃO: LIMIT] - Evita ler o banco inteiro (Performance)
+        // Se der erro de índice, o Firebase vai gerar um link no console para criar.
+        // Adicionei orderBy criadoEm para garantir que venham os recentes.
+        const q = query(collection(db, "escalas"), orderBy("criadoEm", "desc"), limit(300)); 
+        
         const snapshot = await getDocs(q);
         const grupos = new Map();
         snapshot.forEach(doc => {
@@ -270,6 +290,7 @@ async function carregarEventosAdmin() {
             return;
         }
 
+        // Ordenação visual por data do evento
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
         const limiteVisualizacao = 50; 
         
@@ -290,9 +311,15 @@ async function carregarEventosAdmin() {
         });
         
         if (gruposArray.length > limiteVisualizacao) {
-            lista.innerHTML += `<div class="text-center py-3 small text-muted">Exibindo os ${limiteVisualizacao} mais recentes de ${gruposArray.length}.</div>`;
+            lista.innerHTML += `<div class="text-center py-3 small text-muted">Exibindo os ${limiteVisualizacao} mais recentes.</div>`;
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+        console.error(e);
+        // Fallback simples caso não tenha índice de ordenação ainda
+        if(e.code === 'failed-precondition') {
+             alert("Aviso de Sistema: É necessário criar um índice no Firebase. Verifique o console do navegador (F12) e clique no link fornecido pelo Google.");
+        }
+    }
 }
 
 // ================= ADMIN PREVIEW & ACTIONS =================
@@ -362,7 +389,15 @@ export async function abrirPreview(nomeEvento, dataEvento) {
 
 export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
     idEdicaoAdmin = id;
-    const cota = JSON.parse(jsonCota);
+    
+    // [CORREÇÃO: ESTABILIDADE] - Tratamento de erro ao ler JSON
+    let cota = {};
+    try {
+        cota = JSON.parse(jsonCota);
+    } catch(e) {
+        console.error("Erro Cota:", e);
+        cota = { superior:0, intermediario:0, subalterno:0, especial:0, praca:0 };
+    }
 
     document.getElementById('edit-admin-subtitle').innerText = `Editando: ${unidade}`;
     document.getElementById('edit-admin-funcao').value = funcao;
@@ -491,8 +526,7 @@ function gerarCardMissao(d, isPendente) {
     let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
-        // --- CORREÇÃO DE FUSO HORÁRIO E DATA EM IPHONE ---
-        // Forçamos a criação da data baseada nos números exatos, ignorando UTC do navegador
+        // [CORREÇÃO: FUSO HORÁRIO] - Cálculo manual da data para evitar erro em iPhone
         const pAno = parseInt(d.prazoData.split('-')[0]);
         const pMes = parseInt(d.prazoData.split('-')[1]) - 1; // JS conta meses de 0 a 11
         const pDia = parseInt(d.prazoData.split('-')[2]);
@@ -681,9 +715,16 @@ export function abrirPreviaRecibo() {
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
-        if(posto && nome && guerra) lista.push({ posto, nome, guerra, contato });
+        
+        // [CORREÇÃO: VALIDAÇÃO] - Exige contato para evitar dados incompletos
+        if(posto && nome && guerra && contato.length >= 8) {
+            lista.push({ posto, nome, guerra, contato });
+        }
     });
-    if(lista.length === 0) return alert("Preencha os dados dos militares.");
+
+    if(lista.length === 0) return alert("Preencha os dados dos militares. O telefone é obrigatório.");
+    if(lista.length < rows.length) return alert("Atenção: Algum militar não foi adicionado pois o telefone ou nome estava incompleto.");
+
     dadosParaEnvio = lista;
     document.getElementById('recibo-evento').innerText = document.getElementById('titulo-evento-form').innerText;
     document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
