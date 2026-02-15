@@ -491,9 +491,17 @@ function gerarCardMissao(d, isPendente) {
     let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
-        const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
-        const dataLimite = new Date(dataLimiteStr);
+        // --- CORREÇÃO DE FUSO HORÁRIO E DATA EM IPHONE ---
+        // Forçamos a criação da data baseada nos números exatos, ignorando UTC do navegador
+        const pAno = parseInt(d.prazoData.split('-')[0]);
+        const pMes = parseInt(d.prazoData.split('-')[1]) - 1; // JS conta meses de 0 a 11
+        const pDia = parseInt(d.prazoData.split('-')[2]);
+        const pHora = parseInt((d.prazoHora || '23:59').split(':')[0]);
+        const pMin = parseInt((d.prazoHora || '23:59').split(':')[1]);
+        
+        const dataLimite = new Date(pAno, pMes, pDia, pHora, pMin, 59);
         const hoje = new Date();
+
         if (hoje > dataLimite) {
             isBloqueado = true;
             btnClass = "btn-secondary disabled";
