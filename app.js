@@ -32,7 +32,6 @@ function formatarDataLocal(dataString) {
     return `${partes[2]}/${partes[1]}/${partes[0]}`; 
 }
 
-// Formata telefone para 98 9XXXX-XXXX
 window.formatarTelefoneInput = function(input) {
     let v = input.value.replace(/\D/g, ""); 
     v = v.substring(0, 11); 
@@ -41,22 +40,20 @@ window.formatarTelefoneInput = function(input) {
     input.value = v;
 }
 
-// === INICIALIZAÇÃO E CORREÇÕES VISUAIS ===
+function gerarCodigoAutenticacao() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        if (i > 0 && i % 4 === 0) result += '-';
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `CBMMA-${new Date().getFullYear()}-${result}`;
+}
+
+// === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', () => {
     popularSelectCadastroEFuncoes();
-    aplicarCorrecoesVisuais();
 });
-
-function aplicarCorrecoesVisuais() {
-    // Injeta CSS via JS para corrigir o Z-Index do modal de edição
-    const style = document.createElement('style');
-    style.innerHTML = `
-        #modal-editar-admin { z-index: 2050 !important; }
-        .group-header { border-left: 4px solid #b30000; padding-left: 10px; margin-bottom: 15px; margin-top: 20px; }
-        .group-header h6 { margin: 0; color: #b30000; font-weight: 900; letter-spacing: 1px; }
-    `;
-    document.head.appendChild(style);
-}
 
 function popularSelectCadastroEFuncoes() {
     const selCadastro = document.getElementById('unidade-cadastro');
@@ -154,28 +151,53 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ================= ADMIN =================
+// ================= ADMIN: ADICIONAR ORDEM COM 5 CATEGORIAS =================
 export function adicionarOrdem() {
     const unidade = document.getElementById('select-unidade').value;
     const funcao = document.getElementById('select-funcao').value;
-    const oficiais = document.getElementById('input-oficiais').value || 0;
-    const pracas = document.getElementById('input-pracas').value || 0;
+    
+    // Captura os 5 inputs
+    const sup = document.getElementById('input-sup').value || 0;
+    const int = document.getElementById('input-int').value || 0;
+    const sub = document.getElementById('input-sub').value || 0;
+    const esp = document.getElementById('input-esp').value || 0;
+    const pra = document.getElementById('input-pra').value || 0;
+
     if (!unidade) return alert("Selecione uma unidade!");
-    if (oficiais == 0 && pracas == 0) return alert("Defina a quantidade.");
-    listaOrdensTemporaria.push({ id: Date.now(), unidade, funcao, oficiais, pracas });
+    if (sup==0 && int==0 && sub==0 && esp==0 && pra==0) return alert("Defina a quantidade de militares.");
+
+    listaOrdensTemporaria.push({ 
+        id: Date.now(), 
+        unidade, 
+        funcao, 
+        cota: { superior: sup, intermediario: int, subalterno: sub, especial: esp, praca: pra }
+    });
     atualizarTabelaOrdens();
+    
+    // Limpa inputs
+    ['input-sup','input-int','input-sub','input-esp','input-pra'].forEach(id => document.getElementById(id).value = '');
 }
 
 function atualizarTabelaOrdens() {
     const corpo = document.getElementById('tabela-ordens-body');
     document.getElementById('contador-ordens').innerText = `${listaOrdensTemporaria.length}`;
     corpo.innerHTML = "";
+    
     listaOrdensTemporaria.forEach((item, index) => {
+        // Cria resumo visual da cota
+        const c = item.cota;
+        let resumo = [];
+        if(c.superior > 0) resumo.push(`${c.superior} SUP`);
+        if(c.intermediario > 0) resumo.push(`${c.intermediario} INT`);
+        if(c.subalterno > 0) resumo.push(`${c.subalterno} SUB`);
+        if(c.especial > 0) resumo.push(`${c.especial} ESP`);
+        if(c.praca > 0) resumo.push(`${c.praca} PÇ`);
+
         corpo.innerHTML += `
             <tr class="border-bottom">
                 <td class="fw-bold">${item.unidade}</td>
                 <td><span class="badge bg-light text-dark border">${item.funcao}</span></td>
-                <td class="small fw-bold text-muted">${item.oficiais} OF / ${item.pracas} PÇ</td>
+                <td class="small fw-bold text-muted">${resumo.join(' + ')}</td>
                 <td class="text-end"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger ios-click"><i class="bi bi-x-circle-fill"></i></button></td>
             </tr>`;
     });
@@ -202,7 +224,7 @@ export async function dispararSolicitacao() {
                 evento: evento.toUpperCase(), data, horaInicio, horaFim,
                 prazoData, prazoHora: prazoHora || "23:59",
                 unidade: ordem.unidade, funcao: ordem.funcao,
-                cota: { oficial: ordem.oficiais, praca: ordem.pracas },
+                cota: ordem.cota, // Salva o objeto completo {superior, intermediario...}
                 status: "Pendente", militares: "[]", criadoEm: new Date()
             });
         });
@@ -255,7 +277,6 @@ async function carregarEventosAdmin() {
         if (gruposArray.length > limiteVisualizacao) {
             lista.innerHTML += `<div class="text-center py-3 small text-muted">Exibindo os ${limiteVisualizacao} mais recentes de ${gruposArray.length}.</div>`;
         }
-
     } catch(e) { console.error(e); }
 }
 
@@ -276,9 +297,27 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             const idDoc = docSnap.id;
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
-            const cota = d.cota || {oficial: 0, praca: 0};
             
-            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', ${cota.oficial}, ${cota.praca}, '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
+            // Tratamento para cotas antigas (compatibilidade) ou novas
+            const c = d.cota || {};
+            // Monta string de cotas
+            let resumoCota = [];
+            if(c.superior) resumoCota.push(`${c.superior} Sup`);
+            if(c.intermediario) resumoCota.push(`${c.intermediario} Int`);
+            if(c.subalterno) resumoCota.push(`${c.subalterno} Sub`);
+            if(c.especial) resumoCota.push(`${c.especial} Esp`);
+            if(c.praca) resumoCota.push(`${c.praca} Pç`);
+            // Se for antigo e só tiver oficial/praca
+            if(resumoCota.length === 0) {
+                 if(c.oficial) resumoCota.push(`${c.oficial} Of`);
+                 if(c.praca) resumoCota.push(`${c.praca} Pç`);
+            }
+            const textoCota = resumoCota.join(' / ');
+
+            // Passa objeto cota completo como string no onclick
+            const jsonCota = JSON.stringify(c).replace(/"/g, "&quot;");
+            
+            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${d.unidade}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
             if(d.status === "Pendente") {
@@ -287,7 +326,7 @@ export async function abrirPreview(nomeEvento, dataEvento) {
                     <td class="text-center fw-bold text-muted">-</td>
                     <td colspan="3" class="small text-danger fw-bold align-middle">
                         <i class="bi bi-exclamation-circle-fill me-1"></i> PENDENTE: ${d.unidade}
-                        <br><span class="text-muted fw-normal ms-3">Cota: ${cota.oficial} OF / ${cota.praca} PÇ</span>
+                        <br><span class="text-muted fw-normal ms-3">Cota: ${textoCota}</span>
                     </td>
                     <td class="align-middle">${d.funcao}</td>
                     <td class="text-end align-middle">${btnEdit}${btnDelete}</td>
@@ -309,12 +348,19 @@ export async function abrirPreview(nomeEvento, dataEvento) {
     } catch(e) { console.error(e); corpo.innerHTML = "<tr><td colspan='6'>Erro ao carregar.</td></tr>"; }
 }
 
-export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora) {
+export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
     idEdicaoAdmin = id;
+    const cota = JSON.parse(jsonCota);
+
     document.getElementById('edit-admin-subtitle').innerText = `Editando: ${unidade}`;
     document.getElementById('edit-admin-funcao').value = funcao;
-    document.getElementById('edit-admin-of').value = of;
-    document.getElementById('edit-admin-pc').value = pc;
+    
+    document.getElementById('edit-admin-sup').value = cota.superior || 0;
+    document.getElementById('edit-admin-int').value = cota.intermediario || 0;
+    document.getElementById('edit-admin-sub').value = cota.subalterno || 0;
+    document.getElementById('edit-admin-esp').value = cota.especial || 0;
+    document.getElementById('edit-admin-pra').value = cota.praca || 0;
+
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     document.getElementById('modal-editar-admin').classList.add('active');
@@ -323,15 +369,26 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, of, pc, pData, pHora
 export async function salvarEdicaoAdmin() {
     if(!idEdicaoAdmin) return;
     const novaFuncao = document.getElementById('edit-admin-funcao').value;
-    const novoOf = document.getElementById('edit-admin-of').value;
-    const novoPc = document.getElementById('edit-admin-pc').value;
+    
+    const novoSup = document.getElementById('edit-admin-sup').value;
+    const novoInt = document.getElementById('edit-admin-int').value;
+    const novoSub = document.getElementById('edit-admin-sub').value;
+    const novoEsp = document.getElementById('edit-admin-esp').value;
+    const novoPra = document.getElementById('edit-admin-pra').value;
+
     const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
     const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
     try {
         await updateDoc(doc(db, "escalas", idEdicaoAdmin), {
             funcao: novaFuncao,
-            cota: { oficial: novoOf, praca: novoPc },
+            cota: { 
+                superior: novoSup, 
+                intermediario: novoInt, 
+                subalterno: novoSub, 
+                especial: novoEsp, 
+                praca: novoPra 
+            },
             prazoData: novoPrazoData,
             prazoHora: novoPrazoHora
         });
@@ -349,69 +406,28 @@ export async function excluirEscalaIndividual(idDoc, nomeUnidade) {
     } catch(e) { alert("Erro: " + e.message); }
 }
 
-// === CORREÇÃO CRÍTICA NA EXCLUSÃO DO EVENTO ===
-// Substitua a função antiga por esta nova versão mais robusta
 export async function excluirEventoCompleto() {
-    // Verificação de segurança
     if(!eventoPreviewAtual) return console.error("Erro: Nenhum evento selecionado.");
-
-    // 1. Confirmação (Aceita "APAGAR", "apagar", "Apagar")
     const confirmar = prompt(`ATENÇÃO: Isso apagará TODO o histórico do evento "${eventoPreviewAtual.nome}".\n\nDigite "APAGAR" para confirmar:`);
+    if (!confirmar || confirmar.toUpperCase() !== "APAGAR") return alert("Operação cancelada.");
     
-    if (!confirmar || confirmar.toUpperCase() !== "APAGAR") {
-        return alert("Operação cancelada. Você deve digitar APAGAR para confirmar.");
-    }
-    
-    // 2. AÇÃO VISUAL IMEDIATA (Fecha o modal na hora para não travar a tela)
     document.getElementById('preview-modal').classList.remove('active');
-    
-    // Mostra que está carregando na lista de trás
     const listaAdmin = document.getElementById('lista-eventos-admin');
-    if(listaAdmin) {
-        listaAdmin.innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Processando exclusão no Banco de Dados...</div>";
-    }
+    if(listaAdmin) listaAdmin.innerHTML = "<div class='text-center py-5'><span class='spinner-border text-danger'></span><br>Processando exclusão...</div>";
 
     try {
-        console.log(`Iniciando exclusão: ${eventoPreviewAtual.nome} | ${eventoPreviewAtual.data}`);
-
-        // 3. Busca exata no banco
-        const q = query(
-            collection(db, "escalas"), 
-            where("evento", "==", eventoPreviewAtual.nome), 
-            where("data", "==", eventoPreviewAtual.data)
-        );
-        
+        const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
-        
-        // Se não achar nada no banco, apenas recarrega a lista
-        if (snapshot.empty) {
-            console.warn("Documentos não encontrados no banco (talvez já apagados).");
-            alert("Registro limpo com sucesso.");
-            carregarEventosAdmin();
-            return;
-        }
-
-        // 4. Executa a exclusão em lote (Batch Delete)
+        if (snapshot.empty) { alert("Registro limpo."); carregarEventosAdmin(); return; }
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
-        
         await batch.commit(); 
-        
-        console.log("Exclusão finalizada com sucesso.");
-        alert("Histórico apagado definitivamente.");
-        
-        // 5. Atualiza a lista final
+        alert("Histórico apagado.");
         carregarEventosAdmin();
-
-    } catch(e) { 
-        console.error("Erro crítico ao excluir:", e);
-        alert("Erro ao excluir: " + e.message); 
-        // Mesmo com erro, tenta recarregar a lista para não ficar travado
-        carregarEventosAdmin(); 
-    }
+    } catch(e) { console.error(e); alert("Erro ao excluir: " + e.message); carregarEventosAdmin(); }
 }
 
-// ================= ESCALANTE =================
+// ================= ESCALANTE: PREENCHIMENTO INTELIGENTE =================
 async function carregarPendenciasUnidade() {
     const lista = document.getElementById('lista-unidade');
     lista.innerHTML = "<div class='text-center w-100 py-5'><span class='spinner-border text-danger'></span><br>Sincronizando...</div>";
@@ -429,7 +445,6 @@ async function carregarPendenciasUnidade() {
         const pendentes = docs.filter(d => d.status === "Pendente");
         const concluidos = docs.filter(d => d.status !== "Pendente");
 
-        // Renderiza PENDENTES
         if(pendentes.length > 0) {
             lista.innerHTML += `<div class="col-12"><h6 class="text-danger fw-black mb-2 text-uppercase ls-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>PENDÊNCIAS (Prioridade)</h6></div>`;
             pendentes.forEach(d => lista.innerHTML += gerarCardMissao(d, true));
@@ -437,17 +452,28 @@ async function carregarPendenciasUnidade() {
             lista.innerHTML += `<div class="col-12 text-center py-4 bg-white rounded-4 shadow-sm mb-4"><i class="bi bi-check-circle-fill text-success display-4"></i><p class="mt-2 fw-bold text-muted">Tudo em dia!</p></div>`;
         }
 
-        // Renderiza HISTÓRICO
         if(concluidos.length > 0) {
             lista.innerHTML += `<div class="col-12 mt-4"><h6 class="text-muted fw-bold mb-2 text-uppercase ls-1 border-top pt-4">Histórico / Enviados</h6></div>`;
             concluidos.forEach(d => lista.innerHTML += gerarCardMissao(d, false));
         }
-
     } catch(e) { console.error(e); }
 }
 
 function gerarCardMissao(d, isPendente) {
-    const cota = d.cota || { oficial: 0, praca: 0 }; 
+    const c = d.cota || {};
+    // Gera resumo texto
+    let resumo = [];
+    if(c.superior) resumo.push(`${c.superior} Sup`);
+    if(c.intermediario) resumo.push(`${c.intermediario} Int`);
+    if(c.subalterno) resumo.push(`${c.subalterno} Sub`);
+    if(c.especial) resumo.push(`${c.especial} Esp`);
+    if(c.praca) resumo.push(`${c.praca} Pç`);
+    // Fallback antigo
+    if(resumo.length === 0) {
+        if(c.oficial) resumo.push(`${c.oficial} Of`);
+        if(c.praca) resumo.push(`${c.praca} Pç`);
+    }
+
     let isBloqueado = false;
     let textoPrazo = "";
     let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
@@ -458,7 +484,6 @@ function gerarCardMissao(d, isPendente) {
         const dataLimiteStr = `${d.prazoData}T${d.prazoHora || '23:59'}:00`;
         const dataLimite = new Date(dataLimiteStr);
         const hoje = new Date();
-
         if (hoje > dataLimite) {
             isBloqueado = true;
             btnClass = "btn-secondary disabled";
@@ -480,7 +505,7 @@ function gerarCardMissao(d, isPendente) {
                 <small class="text-muted mb-2 d-block">${d.horaInicio} às ${d.horaFim}</small>
                 <div class="bg-light p-3 rounded border text-center my-2">
                     <strong class="d-block text-primary">${d.funcao}</strong>
-                    <div class="small text-muted">Cota: ${cota.oficial} Of / ${cota.praca} Pç</div>
+                    <div class="small text-muted">${resumo.join(' / ')}</div>
                 </div>
                 ${textoPrazo}
                 <button onclick="window.app.abrirEdicao('${d.id}')" class="btn ${btnClass} w-100 fw-bold mt-auto py-3 rounded-3 shadow-sm ios-click" ${isBloqueado ? 'disabled' : ''}>${btnText}</button>
@@ -492,23 +517,45 @@ export async function abrirEdicao(id) {
     escalaSelecionadaId = id;
     const docSnap = await getDoc(doc(db, "escalas", id));
     const d = docSnap.data();
-    const cota = d.cota || { oficial: 0, praca: 0 };
+    const c = d.cota || {};
     
     document.getElementById('titulo-evento-form').innerText = d.evento;
-    document.getElementById('subtitulo-form').innerText = `${d.funcao} | Cota: ${cota.oficial} Of / ${cota.praca} Pç`;
+    document.getElementById('subtitulo-form').innerText = d.funcao;
+    
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
+    
+    // ORDEM DE GERAÇÃO DOS INPUTS
+    // 1. Superior, 2. Intermediário, 3. Subalterno, 4. Especial, 5. Praça
+    // Se for antigo (só oficial/praca), mapeia para Superior/Praça ou trata genérico
+    
     let contador = 0;
-    const qtdOf = parseInt(cota.oficial) || 0;
-    const qtdPc = parseInt(cota.praca) || 0;
-    for(let i=0; i < qtdOf; i++) container.innerHTML += gerarHtmlMilitar(i, 'OFICIAL', dadosSalvos[contador++] || {});
-    for(let i=0; i < qtdPc; i++) container.innerHTML += gerarHtmlMilitar(i, 'PRAÇA', dadosSalvos[contador++] || {});
+
+    // Função auxiliar pra loop
+    const gerarLoop = (qtd, rotulo) => {
+        const num = parseInt(qtd) || 0;
+        for(let i=0; i < num; i++) {
+            container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosSalvos[contador++] || {});
+        }
+    };
+
+    // Suporte legado
+    if(c.oficial) gerarLoop(c.oficial, 'OFICIAL');
+    
+    // Novo Sistema
+    gerarLoop(c.superior, 'OF. SUPERIOR');
+    gerarLoop(c.intermediario, 'OF. INTERMEDIÁRIO');
+    gerarLoop(c.subalterno, 'OF. SUBALTERNO');
+    gerarLoop(c.especial, 'PRAÇA ESPECIAL');
+    
+    // Legado e Novo
+    if(c.praca) gerarLoop(c.praca, 'PRAÇA');
+
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-// GERA INPUTS COM UPPERCASE E MÁSCARA TELEFONE
 function gerarHtmlMilitar(index, tipo, dados) {
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
@@ -530,7 +577,51 @@ function gerarHtmlMilitar(index, tipo, dados) {
     </div>`;
 }
 
-// ================= RECIBO E EXPORT =================
+// ================= VALIDAÇÃO PÚBLICA =================
+export function abrirValidador() {
+    document.getElementById('modal-validador').classList.add('active');
+    document.getElementById('input-codigo-validacao').value = "";
+    document.getElementById('resultado-validacao').style.display = 'none';
+}
+
+export async function consultarAutenticidade() {
+    const codigo = document.getElementById('input-codigo-validacao').value.trim().toUpperCase();
+    const divResult = document.getElementById('resultado-validacao');
+    
+    if (codigo.length < 10) return alert("Código inválido.");
+
+    divResult.style.display = 'block';
+    divResult.innerHTML = "<div class='text-center text-muted'><span class='spinner-border spinner-border-sm me-2'></span>Consultando...</div>";
+
+    try {
+        const q = query(collection(db, "escalas"), where("codigoAutenticacao", "==", codigo));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            divResult.innerHTML = `
+                <div class="alert alert-danger text-center border-0 shadow-sm rounded-4">
+                    <i class="bi bi-x-circle-fill display-4 d-block mb-2"></i>
+                    <strong class="d-block text-uppercase">Documento Inválido</strong>
+                    <span class="small">Este código não consta na base de dados.</span>
+                </div>`;
+        } else {
+            const d = snapshot.docs[0].data();
+            const dataValidacao = d.dataValidacao ? new Date(d.dataValidacao).toLocaleString() : "Data desconhecida";
+            divResult.innerHTML = `
+                <div class="alert alert-success text-center border-0 shadow-sm rounded-4">
+                    <i class="bi bi-patch-check-fill display-4 d-block mb-2"></i>
+                    <strong class="d-block text-uppercase mb-2">Documento Autêntico</strong>
+                    <div class="text-start bg-white p-3 rounded-3 border small text-muted">
+                        <strong>Evento:</strong> ${d.evento}<br>
+                        <strong>Unidade:</strong> ${d.unidade}<br>
+                        <strong>Emitido em:</strong> ${dataValidacao}
+                    </div>
+                </div>`;
+        }
+    } catch (e) { divResult.innerHTML = `<div class="text-danger text-center">Erro de conexão.</div>`; }
+}
+
+// ================= EXPORTAÇÃO PDF & EXCEL =================
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
@@ -553,41 +644,62 @@ export function abrirPreviaRecibo() {
 
 export async function confirmarEnvioRecibo() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
+    const codigoAuth = gerarCodigoAutenticacao();
+    const dataHoraEnvio = new Date().toISOString(); 
+
     try {
         const jsonString = JSON.stringify(dadosParaEnvio);
-        await updateDoc(doc(db, "escalas", escalaSelecionadaId), { militares: jsonString, status: "Preenchido" });
-        gerarReciboPDFProfissional(dadosParaEnvio);
-        alert("Enviado e Baixado!");
+        await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
+            militares: jsonString, status: "Preenchido", codigoAutenticacao: codigoAuth, dataValidacao: dataHoraEnvio 
+        });
+        gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth);
+        alert("Enviado e Autenticado!");
         window.location.reload();
     } catch (e) { alert("Erro: " + e.message); }
 }
 
-function gerarReciboPDFProfissional(listaMilitares) {
+function gerarReciboPDFProfissional(listaMilitares, codigoAuth) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
+    
     doc.setLineWidth(0.5); doc.rect(5, 5, 200, 287);
     doc.setFillColor(153, 0, 0); doc.rect(5, 5, 200, 25, 'F');
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-    doc.text("RECIBO DE ENVIO - CBMMA", 105, 18, null, null, "center");
+    doc.text("COMPROVANTE DE ENVIO - CBMMA", 105, 18, null, null, "center");
+    
     doc.setTextColor(0, 0, 0); doc.setFontSize(11);
     doc.text(`UNIDADE: ${perfilAtual.unidade}`, 15, 40);
     doc.text(`EVENTO: ${tituloEvento}`, 15, 46);
-    doc.text(`DATA: ${new Date().toLocaleString()}`, 15, 52);
+    doc.text(`DATA EMISSÃO: ${new Date().toLocaleString()}`, 15, 52);
+
     let y = 65;
-    doc.setFillColor(230, 230, 230); doc.rect(15, 60, 180, 8, 'F');
+    doc.setFillColor(200, 200, 200); doc.rect(15, 60, 180, 8, 'F');
     doc.setFontSize(9); doc.setFont("helvetica", "bold");
-    doc.text("POSTO", 20, 65); doc.text("GUERRA", 50, 65); doc.text("NOME", 90, 65); doc.text("CONTATO", 160, 65);
+    doc.text("POSTO", 20, 65); doc.text("GUERRA", 50, 65); doc.text("NOME COMPLETO", 90, 65); doc.text("CONTATO", 160, 65);
+    
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
         if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); }
-        doc.text(m.posto, 20, y); doc.text(m.guerra, 50, y); doc.text(m.nome.substring(0,30), 90, y); doc.text(m.contato, 160, y);
+        doc.text(m.posto, 20, y); doc.text(m.guerra, 50, y); 
+        let nomeFormatado = m.nome.length > 35 ? m.nome.substring(0, 32) + "..." : m.nome;
+        doc.text(nomeFormatado, 90, y); 
+        doc.text(m.contato, 160, y);
         y += 7;
     });
-    doc.save(`Recibo_${perfilAtual.unidade}.pdf`);
+
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setDrawColor(150);
+    doc.line(15, pageHeight - 30, 195, pageHeight - 30);
+    doc.setFont("courier", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+    doc.text("AUTENTICAÇÃO DIGITAL DO SISTEMA S.I.E.G.E.", 105, pageHeight - 22, null, null, "center");
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    doc.text(`CHAVE: ${codigoAuth || "VALIDAÇÃO PENDENTE"}`, 105, pageHeight - 16, null, null, "center");
+    doc.setFontSize(7); doc.setTextColor(100, 100, 100);
+    doc.text("Este documento possui validade administrativa interna no CBMMA.", 105, pageHeight - 10, null, null, "center");
+    doc.save(`Comprovante_${perfilAtual.unidade}_${codigoAuth}.pdf`);
 }
 
-// === EXCEL INTELIGENTE: NEGRITO RESILIENTE ===
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -599,9 +711,7 @@ export async function baixarExcelDoEvento() {
         let horarioTexto = "HORÁRIO INDEFINIDO";
         if (!snapshot.empty) {
             const dPrimeiro = snapshot.docs[0].data();
-            if(dPrimeiro.horaInicio && dPrimeiro.horaFim) {
-                horarioTexto = `${dPrimeiro.horaInicio} às ${dPrimeiro.horaFim}`;
-            }
+            if(dPrimeiro.horaInicio && dPrimeiro.horaFim) { horarioTexto = `${dPrimeiro.horaInicio} às ${dPrimeiro.horaFim}`; }
         }
 
         const titleRow = worksheet.getRow(1);
@@ -622,7 +732,6 @@ export async function baixarExcelDoEvento() {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
         }
-
         worksheet.columns = [{ width: 8 }, { width: 15 }, { width: 50 }, { width: 18 }, { width: 15 }, { width: 20 }];
 
         let contador = 1;
@@ -632,28 +741,18 @@ export async function baixarExcelDoEvento() {
             try { militares = JSON.parse(d.militares); } catch { return; }
             militares.forEach(m => {
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
-                
-                // LÓGICA DE NEGRITO (IMPEDE ERRO DE ARQUIVO)
                 const nomeUpper = m.nome.toUpperCase().trim();
                 const guerraUpper = m.guerra.toUpperCase().trim();
                 const indexGuerra = nomeUpper.indexOf(guerraUpper);
-
                 let richTextValue = [];
 
                 if (indexGuerra !== -1 && guerraUpper.length > 0) {
-                    if (indexGuerra > 0) {
-                        richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
-                    }
+                    if (indexGuerra > 0) richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
                     richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
-                    if (indexGuerra + guerraUpper.length < nomeUpper.length) {
-                        richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
-                    }
-                } else {
-                    richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
-                }
+                    if (indexGuerra + guerraUpper.length < nomeUpper.length) richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
+                } else { richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }]; }
 
                 row.getCell(3).value = { richText: richTextValue };
-
                 row.eachCell((cell) => {
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -666,4 +765,4 @@ export async function baixarExcelDoEvento() {
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
-window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin };
+window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade };

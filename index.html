@@ -73,7 +73,7 @@
             font-weight: 600; color: #1c1c1e; transition: background-color 0.2s, box-shadow 0.2s;
         }
         .form-control:focus, .form-select:focus { background-color: #fff; box-shadow: 0 0 0 3px rgba(179,0,0,0.15); outline: none; }
-        .form-label-custom { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #8e8e93; margin-left: 8px; margin-bottom: 6px; display: block; }
+        .form-label-custom { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #8e8e93; margin-left: 4px; margin-bottom: 4px; display: block; }
 
         .btn-tactical {
             background: linear-gradient(135deg, #b30000 0%, #800000 100%);
@@ -108,10 +108,17 @@
 
         #dashboard-screen { display: none; opacity: 0; transition: opacity 0.5s ease; }
         #dashboard-screen.visible { opacity: 1; }
-        /* CORREÇÃO DE SOBREPOSIÇÃO DE MODAIS */
-#modal-editar-admin {
-    z-index: 2050 !important; /* Garante que fique acima do Preview (2000) */
-}
+        
+        #modal-editar-admin { z-index: 2050 !important; }
+        
+        /* COTA GRID */
+        .cota-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        .cota-full { grid-column: span 3; }
+        .cota-half { grid-column: span 1; } /* Ajuste fino */
     </style>
 </head>
 <body>
@@ -143,6 +150,11 @@
                         <button onclick="fazerLogin()" class="btn btn-tactical w-100 mb-3 fw-bold text-uppercase shadow-sm ios-click">Acessar Sistema</button>
                         <div class="text-center pt-2"><a href="#" onclick="alternarTela('cadastro')" class="text-decoration-none small fw-bold text-muted ios-click">Solicitar acesso à unidade <i class="bi bi-arrow-right-short"></i></a></div>
                         <div class="credits-footer">Pensado por Ten QOCBM Elenilton<br><span class="text-danger">Desenvolvido por Asp Of QPEBM Moreira</span></div>
+                        <div class="text-center mt-4">
+                            <button onclick="abrirValidador()" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold ios-click" style="font-size: 0.7rem; border-style: dashed;">
+                                <i class="bi bi-qr-code me-1"></i> VALIDAR DOCUMENTO
+                            </button>
+                        </div>
                     </div>
 
                     <div id="cadastro-form" style="display: none;">
@@ -169,47 +181,33 @@
 
         <div id="dashboard-screen">
            <div class="welcome-bar animate-up" style="
-    background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 100%); 
-    color: white; 
-    border-radius: 24px; 
-    padding: 2.0rem 1rem; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center; 
-    box-shadow: 0 20px 40px rgba(0,0,0,0.25); 
-    border-bottom: 4px solid var(--cbm-gold); 
-    margin-bottom: 2.0rem; 
-    position: relative;
-    overflow: hidden;
-">
-    <div style="position: absolute; top: -50px; left: -50px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0) 70%); pointer-events: none;"></div>
-
-    <div style="position: absolute; top: 15px; right: 15px;">
-        <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2 ios-click" style="font-size: 0.75rem; background: rgba(0,0,0,0.2);">
-            SAIR <i class="bi bi-box-arrow-right ms-1"></i>
-        </button>
-    </div>
-
-    <div class="mb-3">
-        <span class="badge bg-warning text-dark fw-black text-uppercase shadow-sm" style="font-size: 0.7rem; letter-spacing: 1.5px; padding: 0.5em 1em;">
-            <i class="bi bi-geo-alt-fill me-1"></i> Unidade Conectada
-        </span>
-    </div>
-    
-    <h2 id="titulo-unidade" class="m-0 fw-black text-white text-uppercase text-center" style="
-        font-size: 1.8rem; 
-        letter-spacing: -1px; 
-        text-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        line-height: 1.1;
-    ">
-        ...
-    </h2>
-    
-    <div class="mt-3 text-white-50 small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
-        Sistema Operacional Ativo
-    </div>
-</div>
+            background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 100%); 
+            color: white; 
+            border-radius: 24px; 
+            padding: 2.0rem 1rem; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25); 
+            border-bottom: 4px solid var(--cbm-gold); 
+            margin-bottom: 2.0rem; 
+            position: relative;
+            overflow: hidden;">
+            <div style="position: absolute; top: -50px; left: -50px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0) 70%); pointer-events: none;"></div>
+            <div style="position: absolute; top: 15px; right: 15px;">
+                <button onclick="sair()" class="btn btn-outline-danger btn-sm px-3 fw-bold rounded-pill border-2 ios-click" style="font-size: 0.75rem; background: rgba(0,0,0,0.2);">
+                    SAIR <i class="bi bi-box-arrow-right ms-1"></i>
+                </button>
+            </div>
+            <div class="mb-3">
+                <span class="badge bg-warning text-dark fw-black text-uppercase shadow-sm" style="font-size: 0.7rem; letter-spacing: 1.5px; padding: 0.5em 1em;">
+                    <i class="bi bi-geo-alt-fill me-1"></i> Unidade Conectada
+                </span>
+            </div>
+            <h2 id="titulo-unidade" class="m-0 fw-black text-white text-uppercase text-center" style="font-size: 1.8rem; letter-spacing: -1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); line-height: 1.1;">...</h2>
+            <div class="mt-3 text-white-50 small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Sistema Operacional Ativo</div>
+        </div>
 
             <div id="admin-area" style="display: none;">
                 <div class="row g-4">
@@ -237,10 +235,16 @@
                             <hr class="text-muted opacity-25">
                             <div class="mb-2"><label class="form-label-custom">Unidade Destino</label><select id="select-unidade" class="form-select fw-bold"></select></div>
                             <div class="mb-3"><label class="form-label-custom">Função</label><select id="select-funcao" class="form-select text-uppercase"></select></div>
-                            <div class="row g-2 mb-4">
-                                <div class="col-6"><label class="form-label-custom text-center">Oficiais</label><input type="number" id="input-oficiais" class="form-control text-center fw-bold fs-5" placeholder="0"></div>
-                                <div class="col-6"><label class="form-label-custom text-center">Praças</label><input type="number" id="input-pracas" class="form-control text-center fw-bold fs-5" placeholder="0"></div>
+                            
+                            <label class="form-label-custom text-center mb-2 bg-light rounded p-1">COTAS (Preencha as quantidades)</label>
+                            <div class="cota-grid mb-4">
+                                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Of. Superior</label><input type="number" id="input-sup" class="form-control text-center fw-bold px-1" placeholder="0"></div>
+                                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Of. Intermed.</label><input type="number" id="input-int" class="form-control text-center fw-bold px-1" placeholder="0"></div>
+                                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Of. Subalt.</label><input type="number" id="input-sub" class="form-control text-center fw-bold px-1" placeholder="0"></div>
+                                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Praça Especial</label><input type="number" id="input-esp" class="form-control text-center fw-bold px-1" placeholder="0"></div>
+                                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Praça</label><input type="number" id="input-pra" class="form-control text-center fw-bold px-1" placeholder="0"></div>
                             </div>
+
                             <button onclick="adicionarOrdem()" class="btn btn-dark w-100 fw-bold py-3 rounded-4 ios-click text-uppercase">Adicionar à Lista</button>
                         </div>
                     </div>
@@ -275,10 +279,16 @@
         <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
             <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Editar Solicitação</h5><p class="text-muted small" id="edit-admin-subtitle">...</p></div>
             <div class="mb-3"><label class="form-label-custom">Nova Função</label><select id="edit-admin-funcao" class="form-select text-uppercase"></select></div>
-            <div class="row g-2 mb-3">
-                <div class="col-6"><label class="form-label-custom">Oficiais</label><input type="number" id="edit-admin-of" class="form-control text-center fw-bold"></div>
-                <div class="col-6"><label class="form-label-custom">Praças</label><input type="number" id="edit-admin-pc" class="form-control text-center fw-bold"></div>
+            
+            <label class="form-label-custom text-center mb-2 bg-light rounded p-1">COTAS</label>
+            <div class="cota-grid mb-3">
+                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Superior</label><input type="number" id="edit-admin-sup" class="form-control text-center fw-bold px-1"></div>
+                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Intermed.</label><input type="number" id="edit-admin-int" class="form-control text-center fw-bold px-1"></div>
+                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Subalt.</label><input type="number" id="edit-admin-sub" class="form-control text-center fw-bold px-1"></div>
+                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Esp.</label><input type="number" id="edit-admin-esp" class="form-control text-center fw-bold px-1"></div>
+                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Praça</label><input type="number" id="edit-admin-pra" class="form-control text-center fw-bold px-1"></div>
             </div>
+
             <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-4">
                 <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
                 <div class="row g-2">
@@ -352,6 +362,29 @@
         </div>
     </div>
 
+    <div id="modal-validador" class="modal-overlay-custom">
+        <div class="modal-content-custom p-4" style="max-width: 450px; height: auto;">
+            <div class="text-center mb-4">
+                <div class="bg-light d-inline-block p-3 rounded-circle mb-3 shadow-sm">
+                    <i class="bi bi-shield-check text-success display-4"></i>
+                </div>
+                <h5 class="fw-black text-dark text-uppercase m-0">Autenticidade</h5>
+                <p class="text-muted small fw-bold">Verificador de Documentos Oficiais</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label-custom text-center w-100">Código de Autenticação</label>
+                <input type="text" id="input-codigo-validacao" class="form-control text-center fw-black fs-5 text-uppercase" placeholder="CBMMA-2026-XXXX-XXXX" maxlength="25">
+                <div class="form-text text-center small mt-2">Digite o código presente no rodapé do documento.</div>
+            </div>
+
+            <div id="resultado-validacao" class="mb-3" style="display: none;"></div>
+
+            <button onclick="consultarAutenticidade()" class="btn btn-dark w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">Verificar Agora</button>
+            <button onclick="fecharModal('modal-validador')" class="btn btn-light w-100 fw-bold rounded-pill text-muted ios-click">Fechar</button>
+        </div>
+    </div>
+
     <script type="module" src="app.js"></script>
     <script>
         window.toggleSenha = (idInput, iconElement) => {
@@ -363,12 +396,8 @@
             }
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
-        
         window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
-        
-        // Mapeamento Global
-        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
+        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>
-
 </html>
