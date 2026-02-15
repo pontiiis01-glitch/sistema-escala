@@ -101,7 +101,7 @@ async function carregarUnidadesCadastradasNoAdmin() {
 
 // ================= AUTH =================
 export async function fazerLogin() {
-    const email = document.getElementById('email-login').value;
+    const email = document.getElementById('email-login').value.trim(); // Trim adicionado
     const senha = document.getElementById('senha-login').value;
     const btn = document.querySelector('button[onclick="fazerLogin()"]');
     const textoOriginal = btn.innerHTML;
@@ -111,26 +111,45 @@ export async function fazerLogin() {
     btn.disabled = true;
 
     try { 
+        // [NOTA] browserSessionPersistence: O usuário sai ao fechar a aba (Seguro para PC compartilhado)
+        // Se preferir manter logado por dias, mude para: import { ..., setPersistence, browserLocalPersistence } from ...
         await setPersistence(auth, browserSessionPersistence);
         await signInWithEmailAndPassword(auth, email, senha); 
     } 
     catch (e) { 
         console.error(e); 
-        document.getElementById('msg-erro').innerText = "Credenciais inválidas.";
+        document.getElementById('msg-erro').innerText = "Email ou senha incorretos.";
         btn.innerHTML = textoOriginal; btn.disabled = false;
     }
 }
 
 export async function fazerCadastro() {
-    const email = document.getElementById('email-cadastro').value;
+    const email = document.getElementById('email-cadastro').value.trim();
     const senha = document.getElementById('senha-cadastro').value;
-    const unidade = document.getElementById('unidade-cadastro').value;
-    if(!email || !senha || !unidade) return alert("Preencha todos os campos.");
+    const unidadeInput = document.getElementById('unidade-cadastro').value;
+    
+    if(!email || !senha || !unidadeInput) return alert("Preencha todos os campos.");
+    if(senha.length < 6) return alert("A senha deve ter no mínimo 6 caracteres.");
+
+    // [CORREÇÃO: INTEGRIDADE] - Evita cadastro de unidade que não existe na lista oficial
+    const unidadeLimpa = unidadeInput.trim().toUpperCase();
+    if (!UNIDADES_CBMMA_FIXAS.includes(unidadeLimpa)) {
+        return alert("Erro de Segurança: Unidade inválida ou não autorizada.");
+    }
+
     try {
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        await setDoc(doc(db, "usuarios", cred.user.uid), { email, unidade: unidade.toUpperCase(), funcao: "escalante" });
+        // Salva a unidade validada e limpa
+        await setDoc(doc(db, "usuarios", cred.user.uid), { 
+            email, 
+            unidade: unidadeLimpa, 
+            funcao: "escalante" 
+        });
         alert("Unidade cadastrada com sucesso!"); window.location.reload();
-    } catch (e) { alert("Erro: " + e.message); }
+    } catch (e) { 
+        if(e.code === 'auth/email-already-in-use') alert("Este email já está cadastrado.");
+        else alert("Erro ao cadastrar: " + e.message); 
+    }
 }
 
 export function sair() { signOut(auth).then(() => location.reload()); }
@@ -168,7 +187,6 @@ export function adicionarOrdem() {
     const unidade = document.getElementById('select-unidade').value;
     const funcao = document.getElementById('select-funcao').value;
     
-    // Captura os 5 inputs
     const sup = document.getElementById('input-sup').value || 0;
     const int = document.getElementById('input-int').value || 0;
     const sub = document.getElementById('input-sub').value || 0;
@@ -176,6 +194,11 @@ export function adicionarOrdem() {
     const pra = document.getElementById('input-pra').value || 0;
 
     if (!unidade) return alert("Selecione uma unidade!");
+    
+    // [CORREÇÃO: DUPLICIDADE] - Impede adicionar a mesma unidade 2x na mesma leva
+    const jaExiste = listaOrdensTemporaria.some(o => o.unidade === unidade);
+    if(jaExiste) return alert(`A unidade ${unidade} já está na lista!`);
+
     if (sup==0 && int==0 && sub==0 && esp==0 && pra==0) return alert("Defina a quantidade de militares.");
 
     listaOrdensTemporaria.push({ 
@@ -186,7 +209,6 @@ export function adicionarOrdem() {
     });
     atualizarTabelaOrdens();
     
-    // Limpa inputs
     ['input-sup','input-int','input-sub','input-esp','input-pra'].forEach(id => document.getElementById(id).value = '');
 }
 
@@ -196,7 +218,6 @@ function atualizarTabelaOrdens() {
     corpo.innerHTML = "";
     
     listaOrdensTemporaria.forEach((item, index) => {
-        // Cria resumo visual da cota
         const c = item.cota;
         let resumo = [];
         if(c.superior > 0) resumo.push(`${c.superior} SUP`);
@@ -205,7 +226,6 @@ function atualizarTabelaOrdens() {
         if(c.especial > 0) resumo.push(`${c.especial} ESP`);
         if(c.praca > 0) resumo.push(`${c.praca} PÇ`);
 
-        // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
         corpo.innerHTML += `
             <tr class="border-bottom">
                 <td class="fw-bold">${escapar(item.unidade)}</td>
@@ -231,12 +251,11 @@ export async function dispararSolicitacao() {
     if (!prazoData) return alert("Defina o Prazo.");
     if (listaOrdensTemporaria.length === 0) return alert("Adicione unidades.");
 
-    // [CORREÇÃO: BATCH WRITE] - Garante que todas as ordens sejam enviadas ou nenhuma
     try {
         const batch = writeBatch(db);
         
         listaOrdensTemporaria.forEach(ordem => {
-            const novaRef = doc(collection(db, "escalas")); // Cria ID automático
+            const novaRef = doc(collection(db, "escalas")); 
             batch.set(novaRef, {
                 evento: evento.toUpperCase(), 
                 data, 
@@ -253,7 +272,7 @@ export async function dispararSolicitacao() {
             });
         });
 
-        await batch.commit(); // Executa o envio em lote
+        await batch.commit(); 
         alert(`Sucesso! Todas as solicitações foram enviadas.`);
         limparOrdens(); 
         carregarEventosAdmin();
@@ -267,9 +286,6 @@ async function carregarEventosAdmin() {
     const lista = document.getElementById('lista-eventos-admin');
     lista.innerHTML = "<div class='text-center py-3'><span class='spinner-border text-danger'></span></div>";
     try {
-        // [CORREÇÃO: LIMIT] - Evita ler o banco inteiro (Performance)
-        // Se der erro de índice, o Firebase vai gerar um link no console para criar.
-        // Adicionei orderBy criadoEm para garantir que venham os recentes.
         const q = query(collection(db, "escalas"), orderBy("criadoEm", "desc"), limit(300)); 
         
         const snapshot = await getDocs(q);
@@ -290,7 +306,6 @@ async function carregarEventosAdmin() {
             return;
         }
 
-        // Ordenação visual por data do evento
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
         const limiteVisualizacao = 50; 
         
@@ -298,7 +313,6 @@ async function carregarEventosAdmin() {
             const dataBr = formatarDataLocal(info.data);
             const percentual = info.total === 0 ? 0 : Math.round((info.respondidos / info.total) * 100);
             
-            // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
             lista.innerHTML += `
                 <div class="list-group-item p-3 border-bottom ios-click" onclick="window.app.abrirPreview('${escapar(info.evento)}', '${info.data}')">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -315,7 +329,6 @@ async function carregarEventosAdmin() {
         }
     } catch(e) { 
         console.error(e);
-        // Fallback simples caso não tenha índice de ordenação ainda
         if(e.code === 'failed-precondition') {
              alert("Aviso de Sistema: É necessário criar um índice no Firebase. Verifique o console do navegador (F12) e clique no link fornecido pelo Google.");
         }
@@ -340,7 +353,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             
-            // Tratamento para cotas
             const c = d.cota || {};
             let resumoCota = [];
             if(c.superior) resumoCota.push(`${c.superior} Sup`);
@@ -355,7 +367,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             const textoCota = resumoCota.join(' / ');
             const jsonCota = JSON.stringify(c).replace(/"/g, "&quot;");
             
-            // APLICAÇÃO DE SEGURANÇA NOS BOTÕES E DADOS
             const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '${escapar(d.funcao)}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${escapar(d.unidade)}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
@@ -390,7 +401,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
 export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
     idEdicaoAdmin = id;
     
-    // [CORREÇÃO: ESTABILIDADE] - Tratamento de erro ao ler JSON
     let cota = {};
     try {
         cota = JSON.parse(jsonCota);
@@ -526,9 +536,9 @@ function gerarCardMissao(d, isPendente) {
     let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
-        // [CORREÇÃO: FUSO HORÁRIO] - Cálculo manual da data para evitar erro em iPhone
+        // [CORREÇÃO: FUSO HORÁRIO]
         const pAno = parseInt(d.prazoData.split('-')[0]);
-        const pMes = parseInt(d.prazoData.split('-')[1]) - 1; // JS conta meses de 0 a 11
+        const pMes = parseInt(d.prazoData.split('-')[1]) - 1; 
         const pDia = parseInt(d.prazoData.split('-')[2]);
         const pHora = parseInt((d.prazoHora || '23:59').split(':')[0]);
         const pMin = parseInt((d.prazoHora || '23:59').split(':')[1]);
@@ -546,7 +556,6 @@ function gerarCardMissao(d, isPendente) {
         }
     }
 
-    // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
     return `
         <div class="col-md-6 col-lg-4 animate-up">
             <div class="bg-white p-4 h-100 rounded-4 shadow-sm border border-light d-flex flex-column position-relative mission-card" style="opacity: ${cardOpacity}">
@@ -579,7 +588,6 @@ export async function abrirEdicao(id) {
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
 
-    // --- ÁREA DE EXEMPLOS ---
     container.innerHTML += `
         <div class="mb-4 text-center">
             <span class="text-muted small fw-bold text-uppercase d-block mb-2">Dúvidas no preenchimento?</span>
@@ -630,7 +638,6 @@ export async function abrirEdicao(id) {
 }
 
 function gerarHtmlMilitar(index, tipo, dados) {
-    // Usamos 'escapar' dentro dos atributos value para evitar que aspas quebrem o HTML
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
@@ -683,7 +690,6 @@ export async function consultarAutenticidade() {
             const d = docSnap.data();
             const dataValidacao = d.dataValidacao ? new Date(d.dataValidacao).toLocaleString() : "Data desconhecida";
             
-            // APLICAÇÃO DE SEGURANÇA (ESCAPAR)
             divResult.innerHTML = `
                 <div class="alert alert-success text-center border-0 shadow-sm rounded-4">
                     <i class="bi bi-patch-check-fill display-4 d-block mb-2"></i>
@@ -730,7 +736,6 @@ export function abrirPreviaRecibo() {
     document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
     const tbody = document.getElementById('recibo-lista-corpo');
     tbody.innerHTML = "";
-    // Aqui usamos innerHTML para preview, então usamos escapar
     lista.forEach(m => tbody.innerHTML += `<tr><td>${escapar(m.posto)}</td><td><strong>${escapar(m.guerra)}</strong></td><td>${escapar(m.nome)}</td><td>${escapar(m.contato)}</td></tr>`);
     document.getElementById('recibo-modal').classList.add('active');
 }
@@ -745,7 +750,6 @@ export async function confirmarEnvioRecibo() {
     try {
         const jsonString = JSON.stringify(dadosParaEnvio);
         
-        // 1. Salva a Escala Completa (Sigilosa - Com telefones) na coleção PRIVADA
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
             militares: jsonString, 
             status: "Preenchido", 
@@ -753,7 +757,6 @@ export async function confirmarEnvioRecibo() {
             dataValidacao: dataHoraEnvio 
         });
 
-        // 2. Cria o Registro Público (Apenas dados genéricos) na coleção PÚBLICA
         await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
             codigo: codigoAuth,
             evento: tituloEvento,
