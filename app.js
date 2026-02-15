@@ -298,23 +298,21 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             
-            // Tratamento para cotas antigas (compatibilidade) ou novas
+            // Tratamento para cotas
             const c = d.cota || {};
-            // Monta string de cotas
             let resumoCota = [];
             if(c.superior) resumoCota.push(`${c.superior} Sup`);
             if(c.intermediario) resumoCota.push(`${c.intermediario} Int`);
             if(c.subalterno) resumoCota.push(`${c.subalterno} Sub`);
             if(c.especial) resumoCota.push(`${c.especial} Esp`);
             if(c.praca) resumoCota.push(`${c.praca} Pç`);
-            // Se for antigo e só tiver oficial/praca
+            // Fallback
             if(resumoCota.length === 0) {
                  if(c.oficial) resumoCota.push(`${c.oficial} Of`);
                  if(c.praca) resumoCota.push(`${c.praca} Pç`);
             }
             const textoCota = resumoCota.join(' / ');
 
-            // Passa objeto cota completo como string no onclick
             const jsonCota = JSON.stringify(c).replace(/"/g, "&quot;");
             
             const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${d.unidade}', '${d.funcao}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
@@ -527,13 +525,7 @@ export async function abrirEdicao(id) {
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
     
-    // ORDEM DE GERAÇÃO DOS INPUTS
-    // 1. Superior, 2. Intermediário, 3. Subalterno, 4. Especial, 5. Praça
-    // Se for antigo (só oficial/praca), mapeia para Superior/Praça ou trata genérico
-    
     let contador = 0;
-
-    // Função auxiliar pra loop
     const gerarLoop = (qtd, rotulo) => {
         const num = parseInt(qtd) || 0;
         for(let i=0; i < num; i++) {
@@ -541,16 +533,11 @@ export async function abrirEdicao(id) {
         }
     };
 
-    // Suporte legado
     if(c.oficial) gerarLoop(c.oficial, 'OFICIAL');
-    
-    // Novo Sistema
     gerarLoop(c.superior, 'OF. SUPERIOR');
     gerarLoop(c.intermediario, 'OF. INTERMEDIÁRIO');
     gerarLoop(c.subalterno, 'OF. SUBALTERNO');
     gerarLoop(c.especial, 'PRAÇA ESPECIAL');
-    
-    // Legado e Novo
     if(c.praca) gerarLoop(c.praca, 'PRAÇA');
 
     document.getElementById('form-militar-modal').classList.add('active'); 
@@ -577,7 +564,7 @@ function gerarHtmlMilitar(index, tipo, dados) {
     </div>`;
 }
 
-// ================= VALIDAÇÃO PÚBLICA =================
+// ================= VALIDAÇÃO PÚBLICA SEGURA (LÊ DE VALIDACOES_PUBLICAS) =================
 export function abrirValidador() {
     document.getElementById('modal-validador').classList.add('active');
     document.getElementById('input-codigo-validacao').value = "";
@@ -591,21 +578,22 @@ export async function consultarAutenticidade() {
     if (codigo.length < 10) return alert("Código inválido.");
 
     divResult.style.display = 'block';
-    divResult.innerHTML = "<div class='text-center text-muted'><span class='spinner-border spinner-border-sm me-2'></span>Consultando...</div>";
+    divResult.innerHTML = "<div class='text-center text-muted'><span class='spinner-border spinner-border-sm me-2'></span>Consultando base pública...</div>";
 
     try {
-        const q = query(collection(db, "escalas"), where("codigoAutenticacao", "==", codigo));
-        const snapshot = await getDocs(q);
+        // Busca direta pelo ID na coleção PÚBLICA (validacoes_publicas)
+        const docRef = doc(db, "validacoes_publicas", codigo);
+        const docSnap = await getDoc(docRef);
 
-        if (snapshot.empty) {
+        if (!docSnap.exists()) {
             divResult.innerHTML = `
                 <div class="alert alert-danger text-center border-0 shadow-sm rounded-4">
                     <i class="bi bi-x-circle-fill display-4 d-block mb-2"></i>
                     <strong class="d-block text-uppercase">Documento Inválido</strong>
-                    <span class="small">Este código não consta na base de dados.</span>
+                    <span class="small">Este código não consta nos registros oficiais.</span>
                 </div>`;
         } else {
-            const d = snapshot.docs[0].data();
+            const d = docSnap.data();
             const dataValidacao = d.dataValidacao ? new Date(d.dataValidacao).toLocaleString() : "Data desconhecida";
             divResult.innerHTML = `
                 <div class="alert alert-success text-center border-0 shadow-sm rounded-4">
@@ -614,14 +602,21 @@ export async function consultarAutenticidade() {
                     <div class="text-start bg-white p-3 rounded-3 border small text-muted">
                         <strong>Evento:</strong> ${d.evento}<br>
                         <strong>Unidade:</strong> ${d.unidade}<br>
+                        <strong>Situação:</strong> ${d.status}<br>
                         <strong>Emitido em:</strong> ${dataValidacao}
+                    </div>
+                    <div class="mt-2 text-center text-muted" style="font-size: 0.65rem;">
+                        <i class="bi bi-lock-fill"></i> Dados pessoais protegidos pela LGPD.
                     </div>
                 </div>`;
         }
-    } catch (e) { divResult.innerHTML = `<div class="text-danger text-center">Erro de conexão.</div>`; }
+    } catch (e) { 
+        console.error(e);
+        divResult.innerHTML = `<div class="text-danger text-center">Erro de conexão.</div>`; 
+    }
 }
 
-// ================= EXPORTAÇÃO PDF & EXCEL =================
+// ================= EXPORTAÇÃO PDF & EXCEL (SALVA DUPLO: PRIVADO E PÚBLICO) =================
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
@@ -644,16 +639,33 @@ export function abrirPreviaRecibo() {
 
 export async function confirmarEnvioRecibo() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
+    
     const codigoAuth = gerarCodigoAutenticacao();
     const dataHoraEnvio = new Date().toISOString(); 
+    const tituloEvento = document.getElementById('titulo-evento-form').innerText;
 
     try {
         const jsonString = JSON.stringify(dadosParaEnvio);
+        
+        // 1. Salva a Escala Completa (Sigilosa - Com telefones) na coleção PRIVADA
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
-            militares: jsonString, status: "Preenchido", codigoAutenticacao: codigoAuth, dataValidacao: dataHoraEnvio 
+            militares: jsonString, 
+            status: "Preenchido", 
+            codigoAutenticacao: codigoAuth, 
+            dataValidacao: dataHoraEnvio 
         });
+
+        // 2. Cria o Registro Público (Apenas dados genéricos) na coleção PÚBLICA
+        await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
+            codigo: codigoAuth,
+            evento: tituloEvento,
+            unidade: perfilAtual.unidade,
+            dataValidacao: dataHoraEnvio,
+            status: "Válido"
+        });
+
         gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth);
-        alert("Enviado e Autenticado!");
+        alert("Enviado, Autenticado e Protegido!");
         window.location.reload();
     } catch (e) { alert("Erro: " + e.message); }
 }
