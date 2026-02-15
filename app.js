@@ -1,4 +1,4 @@
-import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc, writeBatch, limit } from './firebase-config.js';
+import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, setPersistence, browserSessionPersistence, deleteDoc, writeBatch, limit, deleteUser } from './firebase-config.js';
 import ExcelJS from "https://cdn.skypack.dev/exceljs";
 import { saveAs } from "https://cdn.skypack.dev/file-saver";
 
@@ -101,7 +101,7 @@ async function carregarUnidadesCadastradasNoAdmin() {
 
 // ================= AUTH =================
 export async function fazerLogin() {
-    const email = document.getElementById('email-login').value.trim(); // Trim adicionado
+    const email = document.getElementById('email-login').value.trim();
     const senha = document.getElementById('senha-login').value;
     const btn = document.querySelector('button[onclick="fazerLogin()"]');
     const textoOriginal = btn.innerHTML;
@@ -111,8 +111,6 @@ export async function fazerLogin() {
     btn.disabled = true;
 
     try { 
-        // [NOTA] browserSessionPersistence: O usuário sai ao fechar a aba (Seguro para PC compartilhado)
-        // Se preferir manter logado por dias, mude para: import { ..., setPersistence, browserLocalPersistence } from ...
         await setPersistence(auth, browserSessionPersistence);
         await signInWithEmailAndPassword(auth, email, senha); 
     } 
@@ -123,6 +121,7 @@ export async function fazerLogin() {
     }
 }
 
+// === FUNÇÃO DE CADASTRO COM BLOQUEIO DE DUPLICIDADE ===
 export async function fazerCadastro() {
     const email = document.getElementById('email-cadastro').value.trim();
     const senha = document.getElementById('senha-cadastro').value;
@@ -131,15 +130,30 @@ export async function fazerCadastro() {
     if(!email || !senha || !unidadeInput) return alert("Preencha todos os campos.");
     if(senha.length < 6) return alert("A senha deve ter no mínimo 6 caracteres.");
 
-    // [CORREÇÃO: INTEGRIDADE] - Evita cadastro de unidade que não existe na lista oficial
+    // [CORREÇÃO: INTEGRIDADE] - Valida se a unidade existe na lista fixa
     const unidadeLimpa = unidadeInput.trim().toUpperCase();
     if (!UNIDADES_CBMMA_FIXAS.includes(unidadeLimpa)) {
         return alert("Erro de Segurança: Unidade inválida ou não autorizada.");
     }
 
     try {
+        // 1. Cria o usuário no Auth (Para poder ter permissão de leitura no banco)
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        // Salva a unidade validada e limpa
+        
+        // 2. VERIFICAÇÃO DE SEGURANÇA: Checa se a unidade já existe no Firestore
+        const q = query(collection(db, "usuarios"), where("unidade", "==", unidadeLimpa));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            // ALERTA: UNIDADE JÁ CADASTRADA!
+            // Rollback: Apaga o usuário que acabou de ser criado e bloqueia o processo
+            await deleteUser(cred.user); 
+            alert(`ATENÇÃO: A unidade ${unidadeLimpa} já possui um cadastro ativo.\n\nPara segurança operacional, não é permitido múltiplas contas por unidade.\n\nEntre em contato com o Administrador se precisar recuperar o acesso.`);
+            window.location.reload();
+            return;
+        }
+
+        // 3. Se não existe, grava o perfil no banco com segurança
         await setDoc(doc(db, "usuarios", cred.user.uid), { 
             email, 
             unidade: unidadeLimpa, 
@@ -148,7 +162,10 @@ export async function fazerCadastro() {
         alert("Unidade cadastrada com sucesso!"); window.location.reload();
     } catch (e) { 
         if(e.code === 'auth/email-already-in-use') alert("Este email já está cadastrado.");
-        else alert("Erro ao cadastrar: " + e.message); 
+        else {
+            console.error(e);
+            alert("Erro ao cadastrar: " + e.message);
+        }
     }
 }
 

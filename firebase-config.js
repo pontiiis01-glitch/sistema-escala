@@ -6,7 +6,8 @@ import {
     onAuthStateChanged, 
     signOut, 
     setPersistence, 
-    browserSessionPersistence 
+    browserSessionPersistence,
+    deleteUser // <--- (NOVO) Ferramenta para apagar conta duplicada
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getFirestore, 
@@ -22,7 +23,7 @@ import {
     orderBy, 
     deleteDoc,
     writeBatch,
-    limit  // <--- (1) ADICIONADO AQUI
+    limit
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -41,6 +42,6 @@ const db = getFirestore(app);
 
 export { 
     auth, db, 
-    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
-    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch, limit // <--- (2) ADICIONADO AQUI
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence, deleteUser, // <--- Exportando aqui
+    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch, limit 
 };
