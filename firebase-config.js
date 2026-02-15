@@ -22,7 +22,7 @@ import {
     orderBy, 
     deleteDoc,
     writeBatch,
-    limit // <--- ADICIONADO AQUI
+    limit  // <--- (1) ADICIONADO AQUI
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -42,5 +42,5 @@ const db = getFirestore(app);
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence,
-    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch, limit // <--- ADICIONADO AQUI TAMBÉM
+    doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch, limit // <--- (2) ADICIONADO AQUI
 };
