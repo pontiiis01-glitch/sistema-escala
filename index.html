@@ -335,8 +335,9 @@
                 <input type="text" id="assinatura-funcao" class="form-control fw-bold text-uppercase" placeholder="EX: OFICIAL DE DIA / ESCALANTE">
             </div>
 
-            <button onclick="finalizarEnvioComAssinatura()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
-                <i class="bi bi-file-earmark-pdf-fill me-2"></i> Assinar e Enviar
+<button onclick="solicitarConfirmacaoSenha()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
+    <i class="bi bi-file-earmark-pdf-fill me-2"></i> Assinar e Enviar
+</button>
             </button>
             <button onclick="fecharModal('modal-assinatura')" class="btn btn-light w-100 fw-bold rounded-pill text-muted ios-click">Voltar</button>
         </div>
@@ -421,5 +422,26 @@
         window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
         ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','abrirTelaAssinatura','finalizarEnvioComAssinatura','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
+    <div id="modal-confirmar-senha" class="modal-overlay-custom" style="z-index: 2200;">
+        <div class="modal-content-custom p-4" style="max-width: 400px; height: auto;">
+            <div class="text-center mb-3">
+                <div class="bg-danger bg-opacity-10 d-inline-block p-3 rounded-circle mb-3 shadow-sm">
+                    <i class="bi bi-shield-lock-fill text-danger display-4"></i>
+                </div>
+                <h5 class="fw-black text-dark text-uppercase mt-2">Segurança Obrigatória</h5>
+                <p class="text-muted small">Para garantir a autenticidade jurídica, confirme sua senha de acesso.</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label-custom">Sua Senha</label>
+                <input type="password" id="input-senha-assinatura" class="form-control text-center fw-bold fs-5" placeholder="••••••••">
+            </div>
+            <button onclick="validarSenhaEGerarPDF()" class="btn btn-danger w-100 py-3 fw-bold rounded-4 ios-click text-uppercase shadow-sm">
+                CONFIRMAR E GERAR PDF
+            </button>
+            <button onclick="fecharModal('modal-confirmar-senha')" class="btn btn-light w-100 mt-2 fw-bold rounded-pill text-muted ios-click">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="qrcode-container" style="display: none;"></div>
 </body>
 </html>
