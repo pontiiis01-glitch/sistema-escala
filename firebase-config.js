@@ -8,8 +8,8 @@ import {
     setPersistence, 
     browserSessionPersistence,
     deleteUser,
-    EmailAuthProvider, // ADICIONADO: Necessário para validação de senha
-    reauthenticateWithCredential // ADICIONADO: Necessário para assinatura segura
+    EmailAuthProvider, // <--- OBRIGATÓRIO PARA CORRIGIR O ERRO
+    reauthenticateWithCredential // <--- OBRIGATÓRIO PARA CORRIGIR O ERRO
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getFirestore, 
@@ -42,9 +42,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// AQUI ESTÁ O SEGREDO: Exportando as novas funções para o app.js usar
 export { 
     auth, db, 
     signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence, deleteUser, 
-    EmailAuthProvider, reauthenticateWithCredential, // Exportando as novas funções
+    EmailAuthProvider, reauthenticateWithCredential, 
     doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, orderBy, deleteDoc, writeBatch, limit 
 };
