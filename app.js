@@ -157,14 +157,12 @@ export async function fazerCadastro() {
 
     try {
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
-        
-        // VERIFICAÇÃO DE DUPLICIDADE
         const q = query(collection(db, "usuarios"), where("unidade", "==", unidadeLimpa));
         const snapshot = await getDocs(q);
 
         if (!snapshot.empty) {
             await deleteUser(cred.user); 
-            alert(`ATENÇÃO: A unidade ${unidadeLimpa} já possui um cadastro ativo.\n\nNão é permitido múltiplas contas por unidade.`);
+            alert(`ATENÇÃO: A unidade ${unidadeLimpa} já possui um cadastro ativo.`);
             window.location.reload();
             return;
         }
@@ -251,9 +249,9 @@ function atualizarTabelaOrdens() {
         const c = item.cota;
         let resumo = [];
         if(c.superior > 0) resumo.push(`${c.superior} SUP`);
-        if(c.intermediario > 0) resumo.push(`${c.intermediario} INT`);
-        if(c.subalterno > 0) resumo.push(`${c.subalterno} SUB`);
-        if(c.especial > 0) resumo.push(`${c.especial} ESP`);
+        if(c.intermediario) resumo.push(`${c.intermediario} INT`);
+        if(c.subalterno) resumo.push(`${c.subalterno} SUB`);
+        if(c.especial) resumo.push(`${c.especial} ESP`);
         if(c.praca > 0) resumo.push(`${c.praca} PÇ`);
 
         corpo.innerHTML += `
@@ -753,12 +751,27 @@ export function abrirPreviaRecibo() {
     document.getElementById('recibo-modal').classList.add('active');
 }
 
-export async function confirmarEnvioRecibo() {
+export function abrirTelaAssinatura() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
     
-    // Pergunta o nome para assinatura
-    const nomeAssinatura = prompt("DIGITE SEU POSTO E NOME DE GUERRA\n(Para assinatura digital no documento):", "Ex: 1º TEN QOC SILVA");
-    if(!nomeAssinatura || nomeAssinatura.length < 5) return alert("A assinatura é obrigatória para validar o documento.");
+    // Abre o modal de assinatura
+    document.getElementById('modal-assinatura').classList.add('active');
+    // Limpa campos
+    document.getElementById('assinatura-nome').value = '';
+    document.getElementById('assinatura-funcao').value = '';
+}
+
+export async function finalizarEnvioComAssinatura() {
+    const nomeAssinatura = document.getElementById('assinatura-nome').value.trim().toUpperCase();
+    const funcaoAssinatura = document.getElementById('assinatura-funcao').value.trim().toUpperCase();
+
+    if(nomeAssinatura.length < 5 || funcaoAssinatura.length < 3) {
+        return alert("Por favor, preencha corretamente o Posto/Nome e a Função.");
+    }
+
+    // Fecha modais para não atrapalhar
+    document.getElementById('modal-assinatura').classList.remove('active');
+    document.getElementById('recibo-modal').classList.remove('active');
 
     const codigoAuth = gerarCodigoAutenticacao();
     const dataHoraEnvio = new Date().toISOString(); 
@@ -767,12 +780,17 @@ export async function confirmarEnvioRecibo() {
     try {
         const jsonString = JSON.stringify(dadosParaEnvio);
         
+        // Pega dados da escala para saber horário
+        const docSnap = await getDoc(doc(db, "escalas", escalaSelecionadaId));
+        const dadosEscala = docSnap.data();
+        
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
             militares: jsonString, 
             status: "Preenchido", 
             codigoAutenticacao: codigoAuth, 
             dataValidacao: dataHoraEnvio,
-            assinadoPor: nomeAssinatura
+            assinadoPor: nomeAssinatura,
+            assinadoFuncao: funcaoAssinatura
         });
 
         await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
@@ -783,55 +801,77 @@ export async function confirmarEnvioRecibo() {
             status: "Válido"
         });
 
-        await gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth, nomeAssinatura);
+        await gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth, nomeAssinatura, funcaoAssinatura, dadosEscala);
         alert("Enviado, Autenticado e Protegido!");
         window.location.reload();
     } catch (e) { alert("Erro ao enviar. Verifique se você é da unidade correta.\nDetalhe: " + e.message); }
 }
 
-async function gerarReciboPDFProfissional(listaMilitares, codigoAuth, nomeAssinatura) {
+export async function confirmarEnvioRecibo() {
+    // Função mantida para compatibilidade, mas redireciona para assinatura
+    abrirTelaAssinatura();
+}
+
+async function gerarReciboPDFProfissional(listaMilitares, codigoAuth, nomeAssinatura, funcaoAssinatura, dadosEscala) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
     const unidadeNome = perfilAtual.unidade;
     
     // --- 1. CONFIGURAÇÃO DE IMAGENS E LOGOS ---
-    // Carrega o Brasão da Unidade (COCB)
-    const imgLogo = await carregarImagemBase64('brasao_unidade.jpg') || await carregarImagemBase64('brasao_unidade.png');
+    // Tenta carregar brasões
+    const imgLogoEsq = await carregarImagemBase64('brasao.png'); // CBMMA
+    const imgLogoDir = await carregarImagemBase64('brasao_unidade.jpg'); // COCB
 
-    // --- 2. CABEÇALHO OFICIAL (CBMMA) ---
-    if(imgLogo) {
-        doc.addImage(imgLogo, 'JPEG', 90, 10, 30, 30); // Logo Centralizado no topo
-    }
+    // --- 2. CABEÇALHO OFICIAL (Barra Vermelha Estilo Antigo) ---
+    // Fundo Vermelho Sólido no Topo
+    doc.setFillColor(179, 0, 0); // Vermelho CBMMA
+    doc.rect(0, 0, 210, 40, 'F'); // Barra vermelha cobrindo o topo
     
+    // Linha Dourada
+    doc.setDrawColor(255, 215, 0); // Gold
+    doc.setLineWidth(1.5);
+    doc.line(0, 41, 210, 41);
+
+    // Logos sobre o vermelho
+    if(imgLogoEsq) { doc.addImage(imgLogoEsq, 'PNG', 10, 5, 30, 30); }
+    if(imgLogoDir) { doc.addImage(imgLogoDir, 'JPEG', 170, 5, 30, 30); }
+    
+    // Texto do Cabeçalho (Branco)
+    doc.setTextColor(255, 255, 255);
     doc.setFont("times", "bold");
     doc.setFontSize(12);
+    const centro = 105;
+
+    doc.text("ESTADO DO MARANHÃO", centro, 12, { align: "center" });
+    doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", centro, 18, { align: "center" });
+    doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", centro, 24, { align: "center" });
+    doc.text("COMANDO OPERACIONAL METROPOLITANO", centro, 30, { align: "center" });
+    
+    // Reset Cor Texto
     doc.setTextColor(0, 0, 0);
     
-    let y = 45;
-    const centro = 105; // Centro da página A4
-
-    doc.text("ESTADO DO MARANHÃO", centro, y, { align: "center" }); y += 5;
-    doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", centro, y, { align: "center" }); y += 5;
-    doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", centro, y, { align: "center" }); y += 5;
-    doc.text("COMANDO OPERACIONAL DO CORPO DE BOMBEIROS METROPOLITANO", centro, y, { align: "center" }); y += 8;
+    let y = 55;
     
     // Unidade e Título
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(unidadeNome, centro, y, { align: "center" }); y += 10;
 
-    doc.setFontSize(11);
-    doc.text("ESCALA DE SERVIÇO - PREVENÇÃO E GRANDES EVENTOS", centro, y, { align: "center" }); y += 10;
+    // Nome da Operação (Grande destaque)
+    doc.setFontSize(12);
+    doc.text(tituloEvento, centro, y, { align: "center" }); y += 8;
     
-    // Detalhes da Missão
-    doc.setFont("times", "normal");
+    // Detalhes da Missão (Horário)
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`EVENTO/OPERAÇÃO: ${tituloEvento}`, 15, y); y += 5;
+    
+    const horarioTexto = (dadosEscala && dadosEscala.horaInicio) ? `${dadosEscala.horaInicio} às ${dadosEscala.horaFim}` : "A DEFINIR";
+    doc.text(`HORÁRIO DO SERVIÇO: ${horarioTexto}`, 15, y); y += 5;
     doc.text(`DATA DE EMISSÃO: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 15, y); y += 10;
 
     // --- 3. TABELA DE EFETIVO ---
-    // Cabeçalho da Tabela
-    doc.setFillColor(230, 230, 230); // Cinza claro
+    doc.setFillColor(230, 230, 230); 
     doc.rect(15, y, 180, 8, 'F');
     doc.setFont("helvetica", "bold"); doc.setFontSize(9);
     doc.text("POSTO/GRAD", 20, y+5);
@@ -840,45 +880,37 @@ async function gerarReciboPDFProfissional(listaMilitares, codigoAuth, nomeAssina
     doc.text("CONTATO", 165, y+5);
     y += 8;
 
-    // Corpo da Tabela
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
-        // Zebra (Linhas alternadas)
         if(i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(15, y, 180, 7, 'F'); }
-        
         doc.text(m.posto, 20, y+5);
         doc.text(m.guerra, 60, y+5);
-        
         let nomeFormatado = m.nome.length > 30 ? m.nome.substring(0, 28) + "..." : m.nome;
         doc.text(nomeFormatado, 100, y+5);
-        
         doc.text(m.contato, 165, y+5);
-        
-        // Linha divisória fina
         doc.setDrawColor(200);
         doc.line(15, y+7, 195, y+7);
         y += 7;
     });
 
-    // --- 4. RODAPÉ DE VALIDAÇÃO (QR CODE + ASSINATURA) ---
+    // --- 4. RODAPÉ DE VALIDAÇÃO ---
     const pageHeight = doc.internal.pageSize.height;
     const footerY = pageHeight - 50;
 
-    // Gerar QR Code (Hidden Div trick)
+    // QR Code
     const qrDiv = document.createElement('div');
     const qrCodeObj = new QRCode(qrDiv, {
-        text: `https://seusite.firebaseapp.com/validar/${codigoAuth}`, // URL de Validação
+        text: `https://seusite.firebaseapp.com/validar/${codigoAuth}`,
         width: 100, height: 100,
         correctLevel: QRCode.CorrectLevel.H
     });
     
-    // Aguarda renderização do QR Code
     setTimeout(() => {
         const qrImage = qrDiv.querySelector('img').src;
-        if(qrImage) doc.addImage(qrImage, 'PNG', 15, footerY + 5, 30, 30); // Insere QR no PDF
+        if(qrImage) doc.addImage(qrImage, 'PNG', 15, footerY + 5, 30, 30);
     }, 100);
 
-    // Texto de Assinatura Digital
+    // Texto de Assinatura
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
@@ -886,22 +918,19 @@ async function gerarReciboPDFProfissional(listaMilitares, codigoAuth, nomeAssina
     doc.text("DOCUMENTO ASSINADO DIGITALMENTE", 50, footerY + 10);
     doc.setFont("courier", "normal");
     doc.text(`ASSINADO POR: ${nomeAssinatura.toUpperCase()}`, 50, footerY + 15);
-    doc.text(`FUNÇÃO: OFICIAL DE DIA / ESCALANTE - ${unidadeNome}`, 50, footerY + 20);
+    doc.text(`FUNÇÃO: ${funcaoAssinatura.toUpperCase()} - ${unidadeNome}`, 50, footerY + 20);
     doc.text(`DATA DA ASSINATURA: ${new Date().toLocaleString()}`, 50, footerY + 25);
     
-    // Hash de Validação
     doc.setFontSize(8);
     doc.setTextColor(80, 80, 80);
     doc.text("HASH DE VALIDAÇÃO:", 50, footerY + 33);
     doc.setFont("courier", "bold");
     doc.text(codigoAuth, 50, footerY + 37);
 
-    // Nota Legal
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
     doc.text("A autenticidade deste documento pode ser verificada através do QR Code ao lado ou pelo código hash no sistema S.I.E.G.E.", 15, pageHeight - 5);
 
-    // Salvar Arquivo
     doc.save(`ESCALA_${unidadeNome}_${tituloEvento}.pdf`);
 }
 
@@ -970,4 +999,4 @@ export async function baixarExcelDoEvento() {
     } catch (e) { alert("Erro ao gerar Excel: " + e.message); }
 }
 
-window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade };
+window.app = { fazerLogin, fazerCadastro, sair, adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, abrirTelaAssinatura, finalizarEnvioComAssinatura };

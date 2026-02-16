@@ -31,7 +31,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ANIMAÇÕES FLUÍDAS */
+        /* ANIMAÇÕES */
         .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -59,7 +59,7 @@
             text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 0.5rem;
         }
 
-        /* MAIN (OVERLAP FLUIDO) */
+        /* MAIN */
         .main-container { margin-top: -60px; position: relative; z-index: 10; padding-bottom: 4rem; flex: 1; }
         
         .card-glass {
@@ -91,7 +91,7 @@
 
         .credits-footer { text-align: center; font-size: 0.65rem; color: #888; margin-top: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* MODAIS FLUIDOS */
+        /* MODAIS */
         .modal-overlay-custom {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000;
@@ -112,15 +112,9 @@
         #dashboard-screen.visible { opacity: 1; }
         
         #modal-editar-admin { z-index: 2050 !important; }
+        #modal-assinatura { z-index: 2100 !important; } /* Modal de assinatura acima de tudo */
         
-        /* COTA GRID */
-        .cota-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-        }
-        .cota-full { grid-column: span 3; }
-        .cota-half { grid-column: span 1; }
+        .cota-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
     </style>
 </head>
 <body>
@@ -322,6 +316,32 @@
         </div>
     </div>
 
+    <div id="modal-assinatura" class="modal-overlay-custom">
+        <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
+            <div class="text-center mb-4">
+                <div class="bg-light d-inline-block p-3 rounded-circle mb-3 shadow-sm">
+                    <i class="bi bi-pen-fill text-dark display-4"></i>
+                </div>
+                <h5 class="fw-black text-dark text-uppercase m-0">Assinatura Digital</h5>
+                <p class="text-muted small">Dados do responsável pelo envio</p>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label-custom">Posto/Grad e Nome de Guerra</label>
+                <input type="text" id="assinatura-nome" class="form-control fw-bold text-uppercase" placeholder="EX: 1º TEN QOC SILVA">
+            </div>
+            <div class="mb-4">
+                <label class="form-label-custom">Função no Serviço</label>
+                <input type="text" id="assinatura-funcao" class="form-control fw-bold text-uppercase" placeholder="EX: OFICIAL DE DIA / ESCALANTE">
+            </div>
+
+            <button onclick="finalizarEnvioComAssinatura()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
+                <i class="bi bi-file-earmark-pdf-fill me-2"></i> Assinar e Enviar
+            </button>
+            <button onclick="fecharModal('modal-assinatura')" class="btn btn-light w-100 fw-bold rounded-pill text-muted ios-click">Voltar</button>
+        </div>
+    </div>
+
     <div id="preview-modal" class="modal-overlay-custom">
         <div class="modal-content-custom">
             <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
@@ -358,7 +378,7 @@
                 </div>
                 <div class="row g-2">
                     <div class="col-6"><button onclick="fecharModal('recibo-modal')" class="btn btn-light w-100 py-3 fw-bold rounded-4 text-muted border ios-click">Voltar</button></div>
-                    <div class="col-6"><button onclick="confirmarEnvioRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click shadow-sm">Enviar</button></div>
+                    <div class="col-6"><button onclick="abrirTelaAssinatura()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click shadow-sm">Assinar</button></div>
                 </div>
             </div>
         </div>
@@ -376,7 +396,7 @@
             
             <div class="mb-4">
                 <label class="form-label-custom text-center w-100">Código de Autenticação</label>
-                <input type="text" id="input-codigo-validacao" class="form-control text-center fw-black fs-5 text-uppercase" placeholder="CBMMA-2026-XXXX-XXXX" maxlength="36">
+                <input type="text" id="input-codigo-validacao" class="form-control text-center fw-black fs-5 text-uppercase" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" maxlength="36">
                 <div class="form-text text-center small mt-2">Digite o código presente no rodapé do documento.</div>
             </div>
 
@@ -399,7 +419,7 @@
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
-        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','confirmarEnvioRecibo','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
+        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','abrirTelaAssinatura','finalizarEnvioComAssinatura','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
 </body>
 </html>
