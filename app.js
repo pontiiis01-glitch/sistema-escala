@@ -820,31 +820,28 @@ export function confirmarEnvioRecibo() {
     abrirTelaAssinatura();
 }
 
-// ================= NOVA LÓGICA DE ASSINATURA E PDF (MODELO OFICIAL) =================
+// ================= NOVA LÓGICA DE ASSINATURA E PDF (CORRIGIDA) =================
 
 export function abrirTelaAssinatura() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
     document.getElementById('modal-assinatura').classList.add('active');
     
-    // Limpa campos para nova assinatura
+    // Limpa campos
     document.getElementById('assinatura-nome').value = '';
+    document.getElementById('assinatura-nome-completo').value = ''; // Limpa o novo campo
     document.getElementById('assinatura-funcao').value = '';
-
-    // Tenta preencher automaticamente (Opcional, futuro)
-    if(perfilAtual && perfilAtual.email) {
-       // Futuramente pode puxar do cadastro do usuário
-    }
 }
 
 export function solicitarConfirmacaoSenha() {
-    const nome = document.getElementById('assinatura-nome').value.trim();
+    const nomeGuerra = document.getElementById('assinatura-nome').value.trim();
+    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim(); // Pega o novo campo
     const funcao = document.getElementById('assinatura-funcao').value.trim();
 
-    if(nome.length < 5 || funcao.length < 3) {
-        return alert("Erro: Preencha seu Posto/Nome Completo e Função corretamente.");
+    if(nomeGuerra.length < 3 || nomeCompleto.length < 5 || funcao.length < 3) {
+        return alert("ATENÇÃO: Preencha o Posto/Guerra, o NOME COMPLETO e a Função.");
     }
 
-    // Fecha o modal de dados e abre o de senha
+    // Fecha modal de dados e abre o de senha
     document.getElementById('modal-assinatura').classList.remove('active');
     document.getElementById('input-senha-assinatura').value = "";
     document.getElementById('modal-confirmar-senha').classList.add('active');
@@ -854,7 +851,7 @@ export async function validarSenhaEGerarPDF() {
     const senha = document.getElementById('input-senha-assinatura').value;
     const btn = document.querySelector('button[onclick="validarSenhaEGerarPDF()"]');
     
-    if(!senha) return alert("Digite sua senha para assinar.");
+    if(!senha) return alert("Digite a senha.");
     
     const textoOriginal = btn.innerHTML;
     btn.innerHTML = "<span class='spinner-border spinner-border-sm me-2'></span>Autenticando..."; 
@@ -862,19 +859,19 @@ export async function validarSenhaEGerarPDF() {
 
     try {
         const user = auth.currentUser;
-        if (!user) throw new Error("Usuário não autenticado.");
+        if (!user) throw new Error("Usuário não logado.");
 
-        // Reautenticação de segurança (Obrigatório para assinatura digital)
+        // Reautentica
         const credential = EmailAuthProvider.credential(user.email, senha);
         await reauthenticateWithCredential(user, credential);
         
-        // Se a senha estiver correta:
+        // Se sucesso
         document.getElementById('modal-confirmar-senha').classList.remove('active');
-        await finalizarEnvioReal(); // Chama a função que salva e gera o PDF
+        await finalizarEnvioReal();
 
     } catch (error) {
         console.error(error);
-        alert("Senha incorreta! A assinatura digital requer validação.");
+        alert("Senha incorreta ou erro de autenticação.");
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
         document.getElementById('input-senha-assinatura').value = "";
@@ -882,7 +879,8 @@ export async function validarSenhaEGerarPDF() {
 }
 
 async function finalizarEnvioReal() {
-    const nomeAssinatura = document.getElementById('assinatura-nome').value.trim().toUpperCase();
+    const nomeGuerra = document.getElementById('assinatura-nome').value.trim().toUpperCase();
+    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim().toUpperCase(); // NOVO
     const funcaoAssinatura = document.getElementById('assinatura-funcao').value.trim().toUpperCase();
     
     document.getElementById('recibo-modal').classList.remove('active');
@@ -893,22 +891,19 @@ async function finalizarEnvioReal() {
 
     try {
         const jsonString = JSON.stringify(dadosParaEnvio);
-        
-        // Busca dados atualizados da escala
         const docSnap = await getDoc(doc(db, "escalas", escalaSelecionadaId));
         const dadosEscala = docSnap.data();
         
-        // Atualiza no banco com status de assinado
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
             militares: jsonString, 
             status: "Preenchido", 
             codigoAutenticacao: codigoAuth, 
             dataValidacao: dataHoraEnvio,
-            assinadoPor: nomeAssinatura,
+            assinadoPor: nomeGuerra, // Salva o nome de guerra para exibição rápida
+            assinadoNomeCompleto: nomeCompleto, // Salva o nome completo para fins legais
             assinadoFuncao: funcaoAssinatura
         });
 
-        // Salva na coleção pública para validação via QR Code
         await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
             codigo: codigoAuth,
             evento: tituloEvento,
@@ -917,39 +912,33 @@ async function finalizarEnvioReal() {
             status: "Válido"
         });
 
-        // GERA O PDF NOVO
-        await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeAssinatura, funcaoAssinatura, dadosEscala);
+        // Passamos o nomeCompleto para o PDF
+        await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeCompleto, funcaoAssinatura, dadosEscala);
         
-        alert("Sucesso! Escala enviada e documento gerado.");
+        alert("Escala assinada e enviada com sucesso!");
         window.location.reload();
 
     } catch (e) { 
-        alert("Erro ao processar envio: " + e.message); 
+        alert("Erro no envio: " + e.message); 
         window.location.reload();
     }
 }
 
-// === GERADOR DE PDF - MODELO INSTITUCIONAL (MODELO 4270) ===
+// === GERADOR PDF (Mantém a lógica visual, mas usa o nome completo no rodapé) ===
 async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssinatura, funcaoAssinatura, dadosEscala) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4'); // A4 Retrato
+    const doc = new jsPDF('p', 'mm', 'a4'); 
     
-    // Configurações de layout
     const MARGEM_ESQ = 15;
     const CENTRO_X = 105;
     const LARGURA_UTIL = 180;
     
-    // --- 1. IMAGENS (Brasões) ---
-    // Tenta carregar. Se não tiver, o PDF gera sem erro.
     const imgBrasaoMA = await carregarImagemBase64('brasao.png'); 
     const imgBrasaoUnidade = await carregarImagemBase64('brasao_unidade.jpg'); 
 
-    // --- 2. CABEÇALHO (Estilo Oficial) ---
     let y = 10;
     
-    // Brasão do Estado (Esquerda)
     if(imgBrasaoMA) doc.addImage(imgBrasaoMA, 'PNG', 15, 10, 22, 22);
-    // Brasão da Unidade (Direita) - SOLICITADO
     if(imgBrasaoUnidade) doc.addImage(imgBrasaoUnidade, 'JPEG', 173, 10, 22, 22);
 
     doc.setFont("times", "bold");
@@ -959,162 +948,94 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssin
     doc.text("ESTADO DO MARANHÃO", CENTRO_X, y+5, { align: "center" });
     doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", CENTRO_X, y+10, { align: "center" });
     doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", CENTRO_X, y+15, { align: "center" });
-    
-    // Nome da Unidade (Vem do perfil logado ou da escala)
     const nomeUnidade = (perfilAtual.unidade || dadosEscala.unidade || "COMANDO OPERACIONAL").toUpperCase();
     doc.text(nomeUnidade, CENTRO_X, y+20, { align: "center" });
     
-    y = 45; // Espaço para começar o corpo
+    y = 45;
 
-    // --- 3. TÍTULO E DADOS DO SERVIÇO ---
     doc.setFontSize(14);
-    // Título igual ao modelo enviado
     doc.text("ESCALA DE SERVIÇO", CENTRO_X, y, { align: "center" });
     y += 10;
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
+    doc.text(`OPERAÇÃO: ${dadosEscala.evento}`, MARGEM_ESQ, y); y += 5;
     
-    // Operação
-    doc.text(`OPERAÇÃO: ${dadosEscala.evento}`, MARGEM_ESQ, y); 
-    y += 5;
-    
-    // Data Formatada (Ex: DOMINGO, 15 DE FEVEREIRO DE 2026)
-    // Forçamos hora fixa para evitar fuso horário voltando o dia
     const dataObj = new Date(dadosEscala.data + "T12:00:00"); 
     const opcoesData = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const dataFormatada = dataObj.toLocaleDateString('pt-BR', opcoesData).toUpperCase();
-    doc.text(`DATA: ${dataFormatada}`, MARGEM_ESQ, y); 
-    y += 5;
+    doc.text(`DATA: ${dataObj.toLocaleDateString('pt-BR', opcoesData).toUpperCase()}`, MARGEM_ESQ, y); y += 5;
     
-    // Horário
     const horario = (dadosEscala.horaInicio && dadosEscala.horaFim) ? `${dadosEscala.horaInicio} ÀS ${dadosEscala.horaFim}` : "A DEFINIR";
-    doc.text(`HORÁRIO: ${horario}`, MARGEM_ESQ, y); 
-    y += 10;
+    doc.text(`HORÁRIO: ${horario}`, MARGEM_ESQ, y); y += 10;
 
-    // --- 4. TABELA DE EFETIVO (Sem telefone, Com Função) ---
-    
-    // Cabeçalho da Tabela
-    doc.setFillColor(230, 230, 230); // Fundo Cinza
+    // Tabela
+    doc.setFillColor(230, 230, 230);
     doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8, 'F');
-    doc.setDrawColor(0); 
-    doc.setLineWidth(0.1);
-    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8); // Borda
+    doc.setDrawColor(0); doc.setLineWidth(0.1);
+    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8);
 
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    
-    // Títulos das Colunas
     doc.text("POSTO/GRAD", MARGEM_ESQ + 2, y + 5);
     doc.text("NOME COMPLETO", MARGEM_ESQ + 45, y + 5);
     doc.text("FUNÇÃO", MARGEM_ESQ + 140, y + 5);
     y += 8;
 
-    // Conteúdo da Tabela
     doc.setFont("helvetica", "normal");
-    
-    // Define a função a ser exibida (Se não tiver individual, usa a geral da escala)
     const funcaoPadrao = (dadosEscala.funcao || "BOMBEIRO MILITAR").toUpperCase();
 
     listaMilitares.forEach((m) => {
-        // Verifica quebra de página
-        if (y > 240) {
-            doc.addPage();
-            y = 20;
-            doc.setFont("helvetica", "bold");
-            doc.text("(Continuação da Escala)", MARGEM_ESQ, y-5);
-            doc.setFont("helvetica", "normal");
-        }
-
-        // Desenha Linha
+        if (y > 240) { doc.addPage(); y = 20; doc.text("(Continuação)", MARGEM_ESQ, y-5); }
         doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 7);
-        
-        // Coluna 1: Posto
         doc.text(m.posto, MARGEM_ESQ + 2, y + 5);
-        
-        // Coluna 2: Nome Completo (Trunca se exceder espaço)
         let nomeVisual = m.nome.toUpperCase();
         if(nomeVisual.length > 50) nomeVisual = nomeVisual.substring(0, 48) + "...";
         doc.text(nomeVisual, MARGEM_ESQ + 45, y + 5);
-
-        // Coluna 3: Função (Solicitado: Função escalada)
         doc.text(funcaoPadrao, MARGEM_ESQ + 140, y + 5);
-
         y += 7;
     });
 
-    y += 15; // Espaço antes da assinatura
-
-    // --- 5. ASSINATURA DIGITAL COM QR CODE (Estilo Modelo 4270) ---
-    
-    // Verifica se cabe na página atual
+    y += 15; 
     if (y > 220) { doc.addPage(); y = 40; }
 
-    // GERAÇÃO DO QR CODE (Correção para aparecer a imagem)
+    // QR Code
     const qrContainer = document.getElementById('qrcode-container');
-    qrContainer.innerHTML = ""; // Limpa anterior
-    
-    // Gera no elemento oculto HTML primeiro
+    qrContainer.innerHTML = "";
     new QRCode(qrContainer, {
         text: `https://escala-unificada.firebaseapp.com/validar/${codigoAuth}`,
-        width: 150,
-        height: 150,
-        correctLevel: QRCode.CorrectLevel.H
+        width: 150, height: 150, correctLevel: QRCode.CorrectLevel.H
     });
-
-    // Aguarda renderização do Canvas do QR Code
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(r => setTimeout(r, 300));
     
-    // Captura a imagem do QR Code gerado
     let qrDataUrl = null;
     const qrCanvas = qrContainer.querySelector('canvas');
-    if (qrCanvas) {
-        qrDataUrl = qrCanvas.toDataURL("image/png");
-    } else {
-        const qrImg = qrContainer.querySelector('img');
-        if (qrImg) qrDataUrl = qrImg.src;
-    }
+    if (qrCanvas) qrDataUrl = qrCanvas.toDataURL("image/png");
+    else { const qrImg = qrContainer.querySelector('img'); if (qrImg) qrDataUrl = qrImg.src; }
 
-    // Desenha a Caixa de Assinatura
-    doc.setDrawColor(150); // Cinza
-    doc.setLineWidth(0.5);
-    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 35); // Retângulo grande
+    doc.setDrawColor(150); doc.setLineWidth(0.5);
+    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 35);
 
-    // Insere QR Code na esquerda
-    if (qrDataUrl) {
-        doc.addImage(qrDataUrl, 'PNG', MARGEM_ESQ + 3, y + 2.5, 30, 30);
-    }
+    if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', MARGEM_ESQ + 3, y + 2.5, 30, 30);
 
-    // Texto da Assinatura (Lado Direito)
     const textoX = MARGEM_ESQ + 38;
-    
-    doc.setFont("courier", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(0);
+    doc.setFont("courier", "bold"); doc.setFontSize(10); doc.setTextColor(0);
     doc.text("DOCUMENTO ASSINADO DIGITALMENTE", textoX, y + 8);
     
-    // Nome de quem assinou
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text(nomeAssinatura, textoX, y + 15); 
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text(nomeAssinatura, textoX, y + 15); // AQUI ENTRA O NOME COMPLETO AGORA
     
-    // Função de quem assinou
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
     doc.text(funcaoAssinatura, textoX, y + 20); 
     
-    // Data e Hash
-    doc.setTextColor(80); // Cinza escuro
+    doc.setTextColor(80);
     doc.text(`Data da Assinatura: ${new Date().toLocaleString('pt-BR')}`, textoX, y + 26);
     
-    doc.setFont("courier", "normal");
-    doc.setFontSize(7);
+    doc.setFont("courier", "normal"); doc.setFontSize(7);
     doc.text(`HASH DE VALIDAÇÃO: ${codigoAuth}`, textoX, y + 31);
 
-    // Salva o PDF
     doc.save(`ESCALA_${dadosEscala.unidade}_${dadosEscala.evento}.pdf`);
 }
 
+// Garante que as funções estejam disponíveis globalmente
 window.app = { 
     fazerLogin, fazerCadastro, sair, 
     adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, 

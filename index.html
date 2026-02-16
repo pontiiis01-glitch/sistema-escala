@@ -112,7 +112,8 @@
         #dashboard-screen.visible { opacity: 1; }
         
         #modal-editar-admin { z-index: 2050 !important; }
-        #modal-assinatura { z-index: 2100 !important; } /* Modal de assinatura acima de tudo */
+        #modal-assinatura { z-index: 2100 !important; } 
+        #modal-confirmar-senha { z-index: 2200 !important; }
         
         .cota-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
     </style>
@@ -323,25 +324,52 @@
                     <i class="bi bi-pen-fill text-dark display-4"></i>
                 </div>
                 <h5 class="fw-black text-dark text-uppercase m-0">Assinatura Digital</h5>
-                <p class="text-muted small">Dados do responsável pelo envio</p>
+                <p class="text-muted small">Dados jurídicos do responsável pelo envio</p>
             </div>
             
             <div class="mb-3">
                 <label class="form-label-custom">Posto/Grad e Nome de Guerra</label>
                 <input type="text" id="assinatura-nome" class="form-control fw-bold text-uppercase" placeholder="EX: 1º TEN QOC SILVA">
             </div>
+
+            <div class="mb-3">
+                <label class="form-label-custom text-danger">Nome Completo (Para o PDF)</label>
+                <input type="text" id="assinatura-nome-completo" class="form-control fw-bold text-uppercase border-danger" placeholder="EX: JOÃO DA SILVA PEREIRA">
+            </div>
+
             <div class="mb-4">
                 <label class="form-label-custom">Função no Serviço</label>
                 <input type="text" id="assinatura-funcao" class="form-control fw-bold text-uppercase" placeholder="EX: OFICIAL DE DIA / ESCALANTE">
             </div>
 
-<button onclick="solicitarConfirmacaoSenha()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
-    <i class="bi bi-file-earmark-pdf-fill me-2"></i> Assinar e Enviar
-</button>
+            <button onclick="solicitarConfirmacaoSenha()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
+                <i class="bi bi-file-earmark-pdf-fill me-2"></i> Confirmar e Assinar
             </button>
             <button onclick="fecharModal('modal-assinatura')" class="btn btn-light w-100 fw-bold rounded-pill text-muted ios-click">Voltar</button>
         </div>
     </div>
+
+    <div id="modal-confirmar-senha" class="modal-overlay-custom" style="z-index: 2200;">
+        <div class="modal-content-custom p-4" style="max-width: 400px; height: auto;">
+            <div class="text-center mb-3">
+                <div class="bg-danger bg-opacity-10 d-inline-block p-3 rounded-circle mb-3 shadow-sm">
+                    <i class="bi bi-shield-lock-fill text-danger display-4"></i>
+                </div>
+                <h5 class="fw-black text-dark text-uppercase mt-2">Segurança Obrigatória</h5>
+                <p class="text-muted small">Para garantir a autenticidade jurídica, confirme sua senha de acesso.</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label-custom">Sua Senha</label>
+                <input type="password" id="input-senha-assinatura" class="form-control text-center fw-bold fs-5" placeholder="••••••••">
+            </div>
+            <button onclick="validarSenhaEGerarPDF()" class="btn btn-danger w-100 py-3 fw-bold rounded-4 ios-click text-uppercase shadow-sm">
+                CONFIRMAR E GERAR PDF
+            </button>
+            <button onclick="fecharModal('modal-confirmar-senha')" class="btn btn-light w-100 mt-2 fw-bold rounded-pill text-muted ios-click">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="qrcode-container" style="display: none;"></div>
 
     <div id="preview-modal" class="modal-overlay-custom">
         <div class="modal-content-custom">
@@ -408,7 +436,8 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=4"></script>
+    
     <script>
         window.toggleSenha = (idInput, iconElement) => {
             const input = document.getElementById(idInput);
@@ -420,28 +449,7 @@
         };
         window.alternarTela = (t) => { document.getElementById('login-form').style.display = t==='login'?'block':'none'; document.getElementById('cadastro-form').style.display = t==='cadastro'?'block':'none'; document.getElementById('msg-erro').innerText = ""; };
         window.fecharModal = (id) => { document.getElementById(id).classList.remove('active'); };
-        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','abrirTelaAssinatura','finalizarEnvioComAssinatura','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
+        ['fazerLogin','fazerCadastro','sair','adicionarOrdem','limparOrdens','excluirOrdem','dispararSolicitacao','abrirPreviaRecibo','abrirTelaAssinatura','abrirPreview','baixarExcelDoEvento','excluirEscalaIndividual','abrirEdicao','excluirEventoCompleto','editarSolicitacaoAdmin','salvarEdicaoAdmin','abrirValidador','consultarAutenticidade', 'solicitarConfirmacaoSenha', 'validarSenhaEGerarPDF'].forEach(f => window[f] = (...a) => window.app[f] && window.app[f](...a));
     </script>
-    <div id="modal-confirmar-senha" class="modal-overlay-custom" style="z-index: 2200;">
-        <div class="modal-content-custom p-4" style="max-width: 400px; height: auto;">
-            <div class="text-center mb-3">
-                <div class="bg-danger bg-opacity-10 d-inline-block p-3 rounded-circle mb-3 shadow-sm">
-                    <i class="bi bi-shield-lock-fill text-danger display-4"></i>
-                </div>
-                <h5 class="fw-black text-dark text-uppercase mt-2">Segurança Obrigatória</h5>
-                <p class="text-muted small">Para garantir a autenticidade jurídica, confirme sua senha de acesso.</p>
-            </div>
-            <div class="mb-3">
-                <label class="form-label-custom">Sua Senha</label>
-                <input type="password" id="input-senha-assinatura" class="form-control text-center fw-bold fs-5" placeholder="••••••••">
-            </div>
-            <button onclick="validarSenhaEGerarPDF()" class="btn btn-danger w-100 py-3 fw-bold rounded-4 ios-click text-uppercase shadow-sm">
-                CONFIRMAR E GERAR PDF
-            </button>
-            <button onclick="fecharModal('modal-confirmar-senha')" class="btn btn-light w-100 mt-2 fw-bold rounded-pill text-muted ios-click">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="qrcode-container" style="display: none;"></div>
 </body>
 </html>
