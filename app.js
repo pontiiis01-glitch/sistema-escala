@@ -27,7 +27,6 @@ let idEdicaoAdmin = null;
 
 // === UTILITÁRIOS & SEGURANÇA ===
 
-// FUNÇÃO DE SEGURANÇA: Limpa textos para evitar injeção de código (XSS)
 function escapar(str) {
     if (!str) return "";
     return String(str)
@@ -52,14 +51,36 @@ window.formatarTelefoneInput = function(input) {
     input.value = v;
 }
 
+// NOVA GERAÇÃO DE CÓDIGO (UUID Robusto)
 function gerarCodigoAutenticacao() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-        if (i > 0 && i % 4 === 0) result += '-';
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const sections = [8, 4, 4, 4, 12]; // Formato: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    let codigo = '';
+    
+    sections.forEach((len, index) => {
+        for(let i=0; i<len; i++) {
+            codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        if(index < sections.length - 1) codigo += '-';
+    });
+    
+    return codigo;
+}
+
+// Auxiliar para carregar imagens no PDF
+async function carregarImagemBase64(url) {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.error("Erro ao carregar imagem", e);
+        return null;
     }
-    return `CBMMA-${new Date().getFullYear()}-${result}`;
 }
 
 // === INICIALIZAÇÃO ===
@@ -121,7 +142,6 @@ export async function fazerLogin() {
     }
 }
 
-// === FUNÇÃO DE CADASTRO COM BLOQUEIO DE DUPLICIDADE ===
 export async function fazerCadastro() {
     const email = document.getElementById('email-cadastro').value.trim();
     const senha = document.getElementById('senha-cadastro').value;
@@ -130,30 +150,25 @@ export async function fazerCadastro() {
     if(!email || !senha || !unidadeInput) return alert("Preencha todos os campos.");
     if(senha.length < 6) return alert("A senha deve ter no mínimo 6 caracteres.");
 
-    // [CORREÇÃO: INTEGRIDADE] - Valida se a unidade existe na lista fixa
     const unidadeLimpa = unidadeInput.trim().toUpperCase();
     if (!UNIDADES_CBMMA_FIXAS.includes(unidadeLimpa)) {
         return alert("Erro de Segurança: Unidade inválida ou não autorizada.");
     }
 
     try {
-        // 1. Cria o usuário no Auth (Para poder ter permissão de leitura no banco)
         const cred = await createUserWithEmailAndPassword(auth, email, senha);
         
-        // 2. VERIFICAÇÃO DE SEGURANÇA: Checa se a unidade já existe no Firestore
+        // VERIFICAÇÃO DE DUPLICIDADE
         const q = query(collection(db, "usuarios"), where("unidade", "==", unidadeLimpa));
         const snapshot = await getDocs(q);
 
         if (!snapshot.empty) {
-            // ALERTA: UNIDADE JÁ CADASTRADA!
-            // Rollback: Apaga o usuário que acabou de ser criado e bloqueia o processo
             await deleteUser(cred.user); 
-            alert(`ATENÇÃO: A unidade ${unidadeLimpa} já possui um cadastro ativo.\n\nPara segurança operacional, não é permitido múltiplas contas por unidade.\n\nEntre em contato com o Administrador se precisar recuperar o acesso.`);
+            alert(`ATENÇÃO: A unidade ${unidadeLimpa} já possui um cadastro ativo.\n\nNão é permitido múltiplas contas por unidade.`);
             window.location.reload();
             return;
         }
 
-        // 3. Se não existe, grava o perfil no banco com segurança
         await setDoc(doc(db, "usuarios", cred.user.uid), { 
             email, 
             unidade: unidadeLimpa, 
@@ -199,11 +214,10 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ================= ADMIN: ADICIONAR ORDEM COM 5 CATEGORIAS =================
+// ================= ADMIN: GERENCIAMENTO =================
 export function adicionarOrdem() {
     const unidade = document.getElementById('select-unidade').value;
     const funcao = document.getElementById('select-funcao').value;
-    
     const sup = document.getElementById('input-sup').value || 0;
     const int = document.getElementById('input-int').value || 0;
     const sub = document.getElementById('input-sub').value || 0;
@@ -212,7 +226,6 @@ export function adicionarOrdem() {
 
     if (!unidade) return alert("Selecione uma unidade!");
     
-    // [CORREÇÃO: DUPLICIDADE] - Impede adicionar a mesma unidade 2x na mesma leva
     const jaExiste = listaOrdensTemporaria.some(o => o.unidade === unidade);
     if(jaExiste) return alert(`A unidade ${unidade} já está na lista!`);
 
@@ -417,14 +430,8 @@ export async function abrirPreview(nomeEvento, dataEvento) {
 
 export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
     idEdicaoAdmin = id;
-    
     let cota = {};
-    try {
-        cota = JSON.parse(jsonCota);
-    } catch(e) {
-        console.error("Erro Cota:", e);
-        cota = { superior:0, intermediario:0, subalterno:0, especial:0, praca:0 };
-    }
+    try { cota = JSON.parse(jsonCota); } catch(e) { cota = { superior:0, intermediario:0, subalterno:0, especial:0, praca:0 }; }
 
     document.getElementById('edit-admin-subtitle').innerText = `Editando: ${unidade}`;
     document.getElementById('edit-admin-funcao').value = funcao;
@@ -456,13 +463,7 @@ export async function salvarEdicaoAdmin() {
     try {
         await updateDoc(doc(db, "escalas", idEdicaoAdmin), {
             funcao: novaFuncao,
-            cota: { 
-                superior: novoSup, 
-                intermediario: novoInt, 
-                subalterno: novoSub, 
-                especial: novoEsp, 
-                praca: novoPra 
-            },
+            cota: { superior: novoSup, intermediario: novoInt, subalterno: novoSub, especial: novoEsp, praca: novoPra },
             prazoData: novoPrazoData,
             prazoHora: novoPrazoHora
         });
@@ -541,11 +542,7 @@ function gerarCardMissao(d, isPendente) {
     if(c.subalterno) resumo.push(`${c.subalterno} Sub`);
     if(c.especial) resumo.push(`${c.especial} Esp`);
     if(c.praca) resumo.push(`${c.praca} Pç`);
-    if(resumo.length === 0) {
-        if(c.oficial) resumo.push(`${c.oficial} Of`);
-        if(c.praca) resumo.push(`${c.praca} Pç`);
-    }
-
+    
     let isBloqueado = false;
     let textoPrazo = "";
     let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
@@ -553,7 +550,7 @@ function gerarCardMissao(d, isPendente) {
     let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
-        // [CORREÇÃO: FUSO HORÁRIO]
+        // Correção de Fuso
         const pAno = parseInt(d.prazoData.split('-')[0]);
         const pMes = parseInt(d.prazoData.split('-')[1]) - 1; 
         const pDia = parseInt(d.prazoData.split('-')[2]);
@@ -592,7 +589,7 @@ function gerarCardMissao(d, isPendente) {
         </div>`;
 }
 
-// === EDIÇÃO COM EXEMPLOS VISUAIS (Accordion) ===
+// === EDIÇÃO COM EXEMPLOS VISUAIS ===
 export async function abrirEdicao(id) {
     escalaSelecionadaId = id;
     const docSnap = await getDoc(doc(db, "escalas", id));
@@ -675,7 +672,7 @@ function gerarHtmlMilitar(index, tipo, dados) {
     </div>`;
 }
 
-// ================= VALIDAÇÃO PÚBLICA SEGURA (LÊ DE VALIDACOES_PUBLICAS) =================
+// ================= VALIDAÇÃO PÚBLICA =================
 export function abrirValidador() {
     document.getElementById('modal-validador').classList.add('active');
     document.getElementById('input-codigo-validacao').value = "";
@@ -729,7 +726,7 @@ export async function consultarAutenticidade() {
     }
 }
 
-// ================= EXPORTAÇÃO PDF & EXCEL (SALVA DUPLO: PRIVADO E PÚBLICO) =================
+// ================= EXPORTAÇÃO PDF & EXCEL =================
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
@@ -739,7 +736,6 @@ export function abrirPreviaRecibo() {
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
         
-        // [CORREÇÃO: VALIDAÇÃO] - Exige contato para evitar dados incompletos
         if(posto && nome && guerra && contato.length >= 8) {
             lista.push({ posto, nome, guerra, contato });
         }
@@ -760,6 +756,10 @@ export function abrirPreviaRecibo() {
 export async function confirmarEnvioRecibo() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
     
+    // Pergunta o nome para assinatura
+    const nomeAssinatura = prompt("DIGITE SEU POSTO E NOME DE GUERRA\n(Para assinatura digital no documento):", "Ex: 1º TEN QOC SILVA");
+    if(!nomeAssinatura || nomeAssinatura.length < 5) return alert("A assinatura é obrigatória para validar o documento.");
+
     const codigoAuth = gerarCodigoAutenticacao();
     const dataHoraEnvio = new Date().toISOString(); 
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
@@ -771,7 +771,8 @@ export async function confirmarEnvioRecibo() {
             militares: jsonString, 
             status: "Preenchido", 
             codigoAutenticacao: codigoAuth, 
-            dataValidacao: dataHoraEnvio 
+            dataValidacao: dataHoraEnvio,
+            assinadoPor: nomeAssinatura
         });
 
         await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
@@ -782,52 +783,126 @@ export async function confirmarEnvioRecibo() {
             status: "Válido"
         });
 
-        gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth);
+        await gerarReciboPDFProfissional(dadosParaEnvio, codigoAuth, nomeAssinatura);
         alert("Enviado, Autenticado e Protegido!");
         window.location.reload();
     } catch (e) { alert("Erro ao enviar. Verifique se você é da unidade correta.\nDetalhe: " + e.message); }
 }
 
-function gerarReciboPDFProfissional(listaMilitares, codigoAuth) {
+async function gerarReciboPDFProfissional(listaMilitares, codigoAuth, nomeAssinatura) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tituloEvento = document.getElementById('titulo-evento-form').innerText;
+    const unidadeNome = perfilAtual.unidade;
     
-    doc.setLineWidth(0.5); doc.rect(5, 5, 200, 287);
-    doc.setFillColor(153, 0, 0); doc.rect(5, 5, 200, 25, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-    doc.text("COMPROVANTE DE ENVIO - CBMMA", 105, 18, null, null, "center");
-    
-    doc.setTextColor(0, 0, 0); doc.setFontSize(11);
-    doc.text(`UNIDADE: ${perfilAtual.unidade}`, 15, 40);
-    doc.text(`EVENTO: ${tituloEvento}`, 15, 46);
-    doc.text(`DATA EMISSÃO: ${new Date().toLocaleString()}`, 15, 52);
+    // --- 1. CONFIGURAÇÃO DE IMAGENS E LOGOS ---
+    // Carrega o Brasão da Unidade (COCB)
+    const imgLogo = await carregarImagemBase64('brasao_unidade.jpg') || await carregarImagemBase64('brasao_unidade.png');
 
-    let y = 65;
-    doc.setFillColor(200, 200, 200); doc.rect(15, 60, 180, 8, 'F');
-    doc.setFontSize(9); doc.setFont("helvetica", "bold");
-    doc.text("POSTO", 20, 65); doc.text("GUERRA", 50, 65); doc.text("NOME COMPLETO", 90, 65); doc.text("CONTATO", 160, 65);
+    // --- 2. CABEÇALHO OFICIAL (CBMMA) ---
+    if(imgLogo) {
+        doc.addImage(imgLogo, 'JPEG', 90, 10, 30, 30); // Logo Centralizado no topo
+    }
     
+    doc.setFont("times", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    
+    let y = 45;
+    const centro = 105; // Centro da página A4
+
+    doc.text("ESTADO DO MARANHÃO", centro, y, { align: "center" }); y += 5;
+    doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", centro, y, { align: "center" }); y += 5;
+    doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", centro, y, { align: "center" }); y += 5;
+    doc.text("COMANDO OPERACIONAL DO CORPO DE BOMBEIROS METROPOLITANO", centro, y, { align: "center" }); y += 8;
+    
+    // Unidade e Título
+    doc.setFontSize(14);
+    doc.text(unidadeNome, centro, y, { align: "center" }); y += 10;
+
+    doc.setFontSize(11);
+    doc.text("ESCALA DE SERVIÇO - PREVENÇÃO E GRANDES EVENTOS", centro, y, { align: "center" }); y += 10;
+    
+    // Detalhes da Missão
+    doc.setFont("times", "normal");
+    doc.setFontSize(10);
+    doc.text(`EVENTO/OPERAÇÃO: ${tituloEvento}`, 15, y); y += 5;
+    doc.text(`DATA DE EMISSÃO: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 15, y); y += 10;
+
+    // --- 3. TABELA DE EFETIVO ---
+    // Cabeçalho da Tabela
+    doc.setFillColor(230, 230, 230); // Cinza claro
+    doc.rect(15, y, 180, 8, 'F');
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("POSTO/GRAD", 20, y+5);
+    doc.text("NOME DE GUERRA", 60, y+5);
+    doc.text("NOME COMPLETO", 100, y+5);
+    doc.text("CONTATO", 165, y+5);
+    y += 8;
+
+    // Corpo da Tabela
     doc.setFont("helvetica", "normal");
     listaMilitares.forEach((m, i) => {
-        if(i % 2 === 0) { doc.setFillColor(245, 245, 245); doc.rect(15, y-4, 180, 7, 'F'); }
-        doc.text(m.posto, 20, y); doc.text(m.guerra, 50, y); 
-        let nomeFormatado = m.nome.length > 35 ? m.nome.substring(0, 32) + "..." : m.nome;
-        doc.text(nomeFormatado, 90, y); 
-        doc.text(m.contato, 160, y);
+        // Zebra (Linhas alternadas)
+        if(i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(15, y, 180, 7, 'F'); }
+        
+        doc.text(m.posto, 20, y+5);
+        doc.text(m.guerra, 60, y+5);
+        
+        let nomeFormatado = m.nome.length > 30 ? m.nome.substring(0, 28) + "..." : m.nome;
+        doc.text(nomeFormatado, 100, y+5);
+        
+        doc.text(m.contato, 165, y+5);
+        
+        // Linha divisória fina
+        doc.setDrawColor(200);
+        doc.line(15, y+7, 195, y+7);
         y += 7;
     });
 
+    // --- 4. RODAPÉ DE VALIDAÇÃO (QR CODE + ASSINATURA) ---
     const pageHeight = doc.internal.pageSize.height;
-    doc.setDrawColor(150);
-    doc.line(15, pageHeight - 30, 195, pageHeight - 30);
-    doc.setFont("courier", "bold"); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
-    doc.text("AUTENTICAÇÃO DIGITAL DO SISTEMA S.I.E.G.E.", 105, pageHeight - 22, null, null, "center");
-    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
-    doc.text(`CHAVE: ${codigoAuth || "VALIDAÇÃO PENDENTE"}`, 105, pageHeight - 16, null, null, "center");
-    doc.setFontSize(7); doc.setTextColor(100, 100, 100);
-    doc.text("Este documento possui validade administrativa interna no CBMMA.", 105, pageHeight - 10, null, null, "center");
-    doc.save(`Comprovante_${perfilAtual.unidade}_${codigoAuth}.pdf`);
+    const footerY = pageHeight - 50;
+
+    // Gerar QR Code (Hidden Div trick)
+    const qrDiv = document.createElement('div');
+    const qrCodeObj = new QRCode(qrDiv, {
+        text: `https://seusite.firebaseapp.com/validar/${codigoAuth}`, // URL de Validação
+        width: 100, height: 100,
+        correctLevel: QRCode.CorrectLevel.H
+    });
+    
+    // Aguarda renderização do QR Code
+    setTimeout(() => {
+        const qrImage = qrDiv.querySelector('img').src;
+        if(qrImage) doc.addImage(qrImage, 'PNG', 15, footerY + 5, 30, 30); // Insere QR no PDF
+    }, 100);
+
+    // Texto de Assinatura Digital
+    doc.setFont("courier", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+    
+    doc.text("DOCUMENTO ASSINADO DIGITALMENTE", 50, footerY + 10);
+    doc.setFont("courier", "normal");
+    doc.text(`ASSINADO POR: ${nomeAssinatura.toUpperCase()}`, 50, footerY + 15);
+    doc.text(`FUNÇÃO: OFICIAL DE DIA / ESCALANTE - ${unidadeNome}`, 50, footerY + 20);
+    doc.text(`DATA DA ASSINATURA: ${new Date().toLocaleString()}`, 50, footerY + 25);
+    
+    // Hash de Validação
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.text("HASH DE VALIDAÇÃO:", 50, footerY + 33);
+    doc.setFont("courier", "bold");
+    doc.text(codigoAuth, 50, footerY + 37);
+
+    // Nota Legal
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.text("A autenticidade deste documento pode ser verificada através do QR Code ao lado ou pelo código hash no sistema S.I.E.G.E.", 15, pageHeight - 5);
+
+    // Salvar Arquivo
+    doc.save(`ESCALA_${unidadeNome}_${tituloEvento}.pdf`);
 }
 
 export async function baixarExcelDoEvento() {
