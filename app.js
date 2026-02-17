@@ -14,7 +14,7 @@ const FUNCOES_TATICAS = [
     "SOCORRISTA", "MOTORISTA (AR/ABT)", "COORD. DO EVENTO", "SUBCOORD. DO EVENTO", 
     "OF. DE LOGÍSTICA", "AUX. DE LOGÍSTICA", "OF DE OPERAÇÕES", 
     "OF. DE ADM/FINANÇAS", "AUX. DE ADM/FINANÇAS", "OPER. DRONE", "OF. DE INFORMAÇÃO", 
-    "MOP 1 (MOTO)", "MOP 2 (MOTO)", "AR (MOTORISTA)", "ABT", "VAN", "MICRO - ÔNIBUS"
+    "MOP 1 (MOTO)", "MOP 2 (MOTO)", "AR (MOTORISTA)", "ABT", "VAN", "MICRO - ÔNIBUS", "BOMBEIRO MILITAR"
 ];
 
 let usuarioAtual = null;
@@ -411,12 +411,14 @@ export async function abrirPreview(nomeEvento, dataEvento) {
                 </tr>`;
             } else {
                 militares.forEach((m, index) => {
+                    // Se o militar tiver função individual, mostra ela, senão a geral
+                    const funcaoExibida = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
                     html += `<tr>
                         <td class="fw-bold text-center text-muted">${index + 1}</td>
                         <td><span class="fw-bold">${escapar(m.posto)}</span> ${escapar(m.guerra)}</td>
                         <td class="small text-muted">${escapar(m.contato)}</td>
                         <td class="fw-bold text-dark">${escapar(d.unidade)}</td>
-                        <td><span class="badge bg-light text-dark border">${escapar(d.funcao)}</span></td>
+                        <td><span class="badge bg-light text-dark border">${escapar(funcaoExibida)}</span></td>
                         <td class="text-end">${index === 0 ? btnEdit + btnDelete : ''}</td>
                     </tr>`;
                 });
@@ -599,35 +601,10 @@ export async function abrirEdicao(id) {
     
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
-
-    container.innerHTML += `
-        <div class="mb-4 text-center">
-            <span class="text-muted small fw-bold text-uppercase d-block mb-2">Dúvidas no preenchimento?</span>
-            <button onclick="let el = document.getElementById('box-exemplos'); el.style.display = el.style.display === 'none' ? 'block' : 'none';" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold small ios-click" style="font-size: 0.7rem;">
-                <i class="bi bi-info-circle-fill me-1"></i> VER PADRÃO DE POSTOS
-            </button>
-            <div id="box-exemplos" class="mt-3 p-3 bg-white rounded-4 border shadow-sm animate-up" style="display: none; text-align: left;">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>
-                    <span class="fw-bold text-dark small text-uppercase">Modelos de Referência</span>
-                </div>
-                <p class="text-muted small mb-3" style="font-size: 0.75rem;">Utilize as siglas abaixo para padronizar o documento (Exemplos ilustrativos):</p>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge bg-light text-secondary border">TEN CEL QOC</span>
-                    <span class="badge bg-light text-secondary border">MAJ QOC / QOE / QOA</span>
-                    <span class="badge bg-light text-secondary border">CAP QOC / QOA / QOE</span>
-                    <span class="badge bg-light text-secondary border">1 TEN QOC / QOA / QOE</span>
-                    <span class="badge bg-light text-secondary border">ASP OF BM</span>
-                    <span class="badge bg-light text-secondary border">CAD BM/3</span>
-                    <span class="badge bg-light text-secondary border">ST BM</span>
-                    <span class="badge bg-light text-secondary border">2 SGT BM</span>
-                    <span class="badge bg-light text-secondary border">CB BM</span>
-                    <span class="badge bg-light text-secondary border">SD BM</span>
-                </div>
-            </div>
-        </div>
-    `;
     
+    // Gera opções para o select de função individual
+    const opcoesFuncoes = FUNCOES_TATICAS.map(f => `<option value="${f}">${f}</option>`).join('');
+
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
     
@@ -635,7 +612,7 @@ export async function abrirEdicao(id) {
     const gerarLoop = (qtd, rotulo) => {
         const num = parseInt(qtd) || 0;
         for(let i=0; i < num; i++) {
-            container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosSalvos[contador++] || {});
+            container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosSalvos[contador++] || {}, opcoesFuncoes, d.funcao);
         }
     };
 
@@ -649,7 +626,15 @@ export async function abrirEdicao(id) {
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-function gerarHtmlMilitar(index, tipo, dados) {
+// ATUALIZADO: Agora inclui Select de Função Individual
+function gerarHtmlMilitar(index, tipo, dados, opcoesSelect, funcaoPadrao) {
+    const funcaoSelecionada = dados.funcaoIndividual || funcaoPadrao; // Se já salvou individual usa, senão usa a da escala
+    
+    // Cria o select com a função correta selecionada
+    const selectHTML = `<select class="form-select campo-funcao fw-bold text-uppercase" style="font-size: 0.8rem;">
+        ${opcoesSelect}
+    </select>`.replace(`value="${funcaoSelecionada}"`, `value="${funcaoSelecionada}" selected`);
+
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
@@ -666,65 +651,15 @@ function gerarHtmlMilitar(index, tipo, dados) {
             <div class="col-6 col-md-12">
                 <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${escapar(dados.contato || '')}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
             </div>
+            <div class="col-12 mt-2">
+                <label class="form-label-custom mb-1">Função deste militar</label>
+                ${selectHTML}
+            </div>
         </div>
     </div>`;
 }
 
-// ================= VALIDAÇÃO PÚBLICA =================
-export function abrirValidador() {
-    document.getElementById('modal-validador').classList.add('active');
-    document.getElementById('input-codigo-validacao').value = "";
-    document.getElementById('resultado-validacao').style.display = 'none';
-}
-
-export async function consultarAutenticidade() {
-    const codigo = document.getElementById('input-codigo-validacao').value.trim().toUpperCase();
-    const divResult = document.getElementById('resultado-validacao');
-    
-    if (codigo.length < 10) return alert("Código inválido.");
-
-    divResult.style.display = 'block';
-    divResult.innerHTML = "<div class='text-center text-muted'><span class='spinner-border spinner-border-sm me-2'></span>Consultando base pública...</div>";
-
-    try {
-        const docRef = doc(db, "validacoes_publicas", codigo);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
-            divResult.innerHTML = `
-                <div class="alert alert-danger text-center border-0 shadow-sm rounded-4">
-                    <i class="bi bi-x-circle-fill display-4 d-block mb-2"></i>
-                    <strong class="d-block text-uppercase">Documento Inválido</strong>
-                    <span class="small">Este código não consta nos registros oficiais.</span>
-                    <button onclick="fecharModal('modal-validador')" class="btn btn-light w-100 mt-3 fw-bold rounded-pill text-uppercase">Fechar</button>
-                </div>`;
-        } else {
-            const d = docSnap.data();
-            const dataValidacao = d.dataValidacao ? new Date(d.dataValidacao).toLocaleString() : "Data desconhecida";
-            
-            divResult.innerHTML = `
-                <div class="alert alert-success text-center border-0 shadow-sm rounded-4">
-                    <i class="bi bi-patch-check-fill display-4 d-block mb-2"></i>
-                    <strong class="d-block text-uppercase mb-2">Documento Autêntico</strong>
-                    <div class="text-start bg-white p-3 rounded-3 border small text-muted">
-                        <strong>Evento:</strong> ${escapar(d.evento)}<br>
-                        <strong>Unidade:</strong> ${escapar(d.unidade)}<br>
-                        <strong>Situação:</strong> ${escapar(d.status)}<br>
-                        <strong>Emitido em:</strong> ${dataValidacao}
-                    </div>
-                    <div class="mt-2 text-center text-muted" style="font-size: 0.65rem;">
-                        <i class="bi bi-lock-fill"></i> Dados pessoais protegidos pela LGPD.
-                    </div>
-                    <button onclick="fecharModal('modal-validador')" class="btn btn-dark w-100 mt-3 fw-bold rounded-pill text-uppercase">Fechar</button>
-                </div>`;
-        }
-    } catch (e) { 
-        console.error(e);
-        divResult.innerHTML = `<div class="text-danger text-center">Erro de conexão.</div>`; 
-    }
-}
-
-// ================= EXPORTAÇÃO EXCEL =================
+// ================= EXPORTAÇÃO EXCEL INTELIGENTE =================
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -742,7 +677,6 @@ export async function baixarExcelDoEvento() {
         const titleRow = worksheet.getRow(1);
         worksheet.mergeCells('A1:F1');
         titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
-        titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
         titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         titleRow.height = 30;
@@ -765,17 +699,23 @@ export async function baixarExcelDoEvento() {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch { return; }
             militares.forEach(m => {
-                const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, d.funcao ]);
+                const funcaoFinal = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
+                const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, funcaoFinal ]);
+                
+                // Lógica de Negrito Parcial
                 const nomeUpper = m.nome.toUpperCase().trim();
                 const guerraUpper = m.guerra.toUpperCase().trim();
-                const indexGuerra = nomeUpper.indexOf(guerraUpper);
                 let richTextValue = [];
-
+                
+                const indexGuerra = nomeUpper.indexOf(guerraUpper);
+                
                 if (indexGuerra !== -1 && guerraUpper.length > 0) {
-                    if (indexGuerra > 0) richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
-                    richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
-                    if (indexGuerra + guerraUpper.length < nomeUpper.length) richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
-                } else { richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }]; }
+                     if(indexGuerra > 0) richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
+                     richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
+                     if(indexGuerra + guerraUpper.length < nomeUpper.length) richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
+                } else {
+                    richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
+                }
 
                 row.getCell(3).value = { richText: richTextValue };
                 row.eachCell((cell) => {
@@ -798,9 +738,10 @@ export function abrirPreviaRecibo() {
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
+        const funcaoIndividual = row.querySelector('.campo-funcao').value; // PEGA FUNÇÃO INDIVIDUAL
         
         if(posto && nome && guerra && contato.length >= 8) {
-            lista.push({ posto, nome, guerra, contato });
+            lista.push({ posto, nome, guerra, contato, funcaoIndividual });
         }
     });
 
@@ -812,7 +753,7 @@ export function abrirPreviaRecibo() {
     document.getElementById('recibo-unidade').innerText = perfilAtual.unidade;
     const tbody = document.getElementById('recibo-lista-corpo');
     tbody.innerHTML = "";
-    lista.forEach(m => tbody.innerHTML += `<tr><td>${escapar(m.posto)}</td><td><strong>${escapar(m.guerra)}</strong></td><td>${escapar(m.nome)}</td><td>${escapar(m.contato)}</td></tr>`);
+    lista.forEach(m => tbody.innerHTML += `<tr><td>${escapar(m.posto)}</td><td><strong>${escapar(m.guerra)}</strong></td><td>${escapar(m.nome)}</td><td>${escapar(m.funcaoIndividual)}</td></tr>`);
     document.getElementById('recibo-modal').classList.add('active');
 }
 
@@ -913,7 +854,7 @@ async function finalizarEnvioReal() {
         });
 
         // Passamos o nomeCompleto para o PDF
-        await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeCompleto, funcaoAssinatura, dadosEscala);
+        await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeGuerra, nomeCompleto, funcaoAssinatura, dadosEscala);
         
         alert("Escala assinada e enviada com sucesso!");
         window.location.reload();
@@ -924,41 +865,77 @@ async function finalizarEnvioReal() {
     }
 }
 
-// === GERADOR PDF (Mantém a lógica visual, mas usa o nome completo no rodapé) ===
-async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssinatura, funcaoAssinatura, dadosEscala) {
+// === VALIDAÇÃO PÚBLICA VISUAL (VERDE) ===
+export function abrirValidador() {
+    document.getElementById('modal-validador').classList.add('active');
+    document.getElementById('resultado-validacao').style.display = 'none';
+    document.getElementById('input-codigo-validacao').value = "";
+}
+
+export async function consultarAutenticidade() {
+    const codigo = document.getElementById('input-codigo-validacao').value.trim().toUpperCase();
+    const divResult = document.getElementById('resultado-validacao');
+    divResult.style.display = 'block';
+    divResult.innerHTML = "<div class='text-center text-muted mt-3'><span class='spinner-border text-success'></span><br>Verificando...</div>";
+
+    try {
+        const docRef = doc(db, "validacoes_publicas", codigo);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            divResult.innerHTML = `
+                <div class="mt-4 p-3 bg-danger bg-opacity-10 border border-danger rounded-3 text-center">
+                    <i class="bi bi-x-circle-fill text-danger display-5"></i>
+                    <h5 class="fw-bold text-danger mt-2">CÓDIGO NÃO ENCONTRADO</h5>
+                    <p class="small text-muted mb-0">Verifique se digitou corretamente.</p>
+                </div>`;
+        } else {
+            const d = docSnap.data();
+            const dataF = new Date(d.dataValidacao).toLocaleString('pt-BR');
+            // ESTILO VISUAL IGUAL AO PRINT
+            divResult.innerHTML = `
+                <div class="mt-4 bg-success bg-opacity-25 p-3 rounded-4 text-center border border-success">
+                    <i class="bi bi-patch-check-fill text-success display-4"></i>
+                    <h5 class="fw-bold text-success text-uppercase mt-2 mb-3">DOCUMENTO AUTÊNTICO</h5>
+                    <div class="bg-white p-3 rounded-3 text-start small shadow-sm">
+                        <div class="mb-1"><span class="fw-bold text-muted">Evento:</span> <span class="text-dark fw-bold text-uppercase">${escapar(d.evento)}</span></div>
+                        <div class="mb-1"><span class="fw-bold text-muted">Unidade:</span> <span class="text-dark fw-bold">${escapar(d.unidade)}</span></div>
+                        <div class="mb-1"><span class="fw-bold text-muted">Situação:</span> <span class="text-success fw-bold">VÁLIDO</span></div>
+                        <div><span class="fw-bold text-muted">Emitido em:</span> <span class="text-dark">${dataF}</span></div>
+                    </div>
+                    <div class="mt-2 text-muted" style="font-size: 0.65rem;"><i class="bi bi-lock-fill"></i> Dados protegidos pela LGPD.</div>
+                </div>`;
+        }
+    } catch (e) { divResult.innerHTML = "Erro conexão."; }
+}
+
+// === NOVO GERADOR DE PDF (Layout Corrigido) ===
+async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerraAssinatura, nomeCompletoAssinatura, funcaoAssinatura, dadosEscala) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4'); 
+    const MARGEM_ESQ = 15; const CENTRO_X = 105; const LARGURA_UTIL = 180;
     
-    const MARGEM_ESQ = 15;
-    const CENTRO_X = 105;
-    const LARGURA_UTIL = 180;
-    
+    // Carrega apenas o Brasão CBM (o da unidade foi removido a pedido)
     const imgBrasaoMA = await carregarImagemBase64('brasao.png'); 
-    const imgBrasaoUnidade = await carregarImagemBase64('brasao_unidade.jpg'); 
 
     let y = 10;
+    // Centraliza o Brasão
+    if(imgBrasaoMA) doc.addImage(imgBrasaoMA, 'PNG', 105 - 12, 10, 24, 24);
+
+    doc.setFont("times", "bold"); doc.setFontSize(11); doc.setTextColor(0);
+    doc.text("ESTADO DO MARANHÃO", CENTRO_X, y+30, { align: "center" });
+    doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", CENTRO_X, y+35, { align: "center" });
+    doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", CENTRO_X, y+40, { align: "center" });
     
-    if(imgBrasaoMA) doc.addImage(imgBrasaoMA, 'PNG', 15, 10, 22, 22);
-    if(imgBrasaoUnidade) doc.addImage(imgBrasaoUnidade, 'JPEG', 173, 10, 22, 22);
-
-    doc.setFont("times", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-
-    doc.text("ESTADO DO MARANHÃO", CENTRO_X, y+5, { align: "center" });
-    doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", CENTRO_X, y+10, { align: "center" });
-    doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", CENTRO_X, y+15, { align: "center" });
+    // Nome da Unidade agora no corpo, não no cabeçalho fixo
     const nomeUnidade = (perfilAtual.unidade || dadosEscala.unidade || "COMANDO OPERACIONAL").toUpperCase();
-    doc.text(nomeUnidade, CENTRO_X, y+20, { align: "center" });
-    
-    y = 45;
+    doc.text(nomeUnidade, CENTRO_X, y+45, { align: "center" });
 
-    doc.setFontSize(14);
-    doc.text("ESCALA DE SERVIÇO", CENTRO_X, y, { align: "center" });
-    y += 10;
+    y = 65;
+    doc.setFontSize(14); doc.text("ESCALA DE SERVIÇO", CENTRO_X, y, { align: "center" });
+    y += 12;
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10); doc.setFont("helvetica", "bold");
     doc.text(`OPERAÇÃO: ${dadosEscala.evento}`, MARGEM_ESQ, y); y += 5;
     
     const dataObj = new Date(dadosEscala.data + "T12:00:00"); 
@@ -969,28 +946,38 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssin
     doc.text(`HORÁRIO: ${horario}`, MARGEM_ESQ, y); y += 10;
 
     // Tabela
-    doc.setFillColor(230, 230, 230);
-    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8, 'F');
-    doc.setDrawColor(0); doc.setLineWidth(0.1);
-    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8);
-
+    doc.setFillColor(230, 230, 230); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8, 'F');
+    doc.setDrawColor(0); doc.setLineWidth(0.1); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8);
+    
     doc.setFontSize(9);
     doc.text("POSTO/GRAD", MARGEM_ESQ + 2, y + 5);
-    doc.text("NOME COMPLETO", MARGEM_ESQ + 45, y + 5);
-    doc.text("FUNÇÃO", MARGEM_ESQ + 140, y + 5);
+    doc.text("NOME COMPLETO", MARGEM_ESQ + 35, y + 5);
+    doc.text("NOME GUERRA", MARGEM_ESQ + 110, y + 5);
+    doc.text("FUNÇÃO", MARGEM_ESQ + 145, y + 5);
     y += 8;
 
     doc.setFont("helvetica", "normal");
-    const funcaoPadrao = (dadosEscala.funcao || "BOMBEIRO MILITAR").toUpperCase();
 
     listaMilitares.forEach((m) => {
-        if (y > 240) { doc.addPage(); y = 20; doc.text("(Continuação)", MARGEM_ESQ, y-5); }
+        if (y > 250) { doc.addPage(); y = 20; doc.text("(Continuação)", MARGEM_ESQ, y-5); }
         doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 7);
+        
+        doc.setFont("helvetica", "normal");
         doc.text(m.posto, MARGEM_ESQ + 2, y + 5);
+        
         let nomeVisual = m.nome.toUpperCase();
-        if(nomeVisual.length > 50) nomeVisual = nomeVisual.substring(0, 48) + "...";
-        doc.text(nomeVisual, MARGEM_ESQ + 45, y + 5);
-        doc.text(funcaoPadrao, MARGEM_ESQ + 140, y + 5);
+        if(nomeVisual.length > 40) nomeVisual = nomeVisual.substring(0, 38) + "...";
+        doc.text(nomeVisual, MARGEM_ESQ + 35, y + 5);
+
+        // NOME DE GUERRA EM NEGRITO
+        doc.setFont("helvetica", "bold");
+        doc.text(m.guerra, MARGEM_ESQ + 110, y + 5);
+        doc.setFont("helvetica", "normal"); // Volta ao normal
+
+        // Função Individual
+        const f = m.funcaoIndividual ? m.funcaoIndividual : (dadosEscala.funcao || "BOMBEIRO");
+        doc.text(f.substring(0, 18), MARGEM_ESQ + 145, y + 5);
+
         y += 7;
     });
 
@@ -1000,10 +987,10 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssin
     // QR Code
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = "";
-    new QRCode(qrContainer, {
-        text: `https://escala-unificada.firebaseapp.com/validar/${codigoAuth}`,
-        width: 150, height: 150, correctLevel: QRCode.CorrectLevel.H
-    });
+    // URL PARA AUTO VALIDAÇÃO
+    const urlValidacao = window.location.origin + window.location.pathname + "?validar=" + codigoAuth;
+    
+    new QRCode(qrContainer, { text: urlValidacao, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.H });
     await new Promise(r => setTimeout(r, 300));
     
     let qrDataUrl = null;
@@ -1011,8 +998,7 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssin
     if (qrCanvas) qrDataUrl = qrCanvas.toDataURL("image/png");
     else { const qrImg = qrContainer.querySelector('img'); if (qrImg) qrDataUrl = qrImg.src; }
 
-    doc.setDrawColor(150); doc.setLineWidth(0.5);
-    doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 35);
+    doc.setDrawColor(150); doc.setLineWidth(0.5); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 35);
 
     if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', MARGEM_ESQ + 3, y + 2.5, 30, 30);
 
@@ -1020,22 +1006,26 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeAssin
     doc.setFont("courier", "bold"); doc.setFontSize(10); doc.setTextColor(0);
     doc.text("DOCUMENTO ASSINADO DIGITALMENTE", textoX, y + 8);
     
+    // NOME COMPLETO + POSTO NA ASSINATURA
     doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text(nomeAssinatura, textoX, y + 15); // AQUI ENTRA O NOME COMPLETO AGORA
+    // Combina Posto (extraído do nome de guerra ou input) se possível, aqui usa o nome de guerra pra identificar patente se tiver
+    // Mas o usuário pediu Posto/Graduação na assinatura. O input assinatura-nome é "Posto e Guerra".
+    // Vamos usar o Nome Completo abaixo.
+    doc.text(nomeGuerraAssinatura, textoX, y + 14); // Ex: 2 TEN MOREIRA
+    doc.setFont("helvetica", "normal");
+    doc.text(nomeCompletoAssinatura, textoX, y + 18); // Ex: IGOR MOREIRA PONTES
     
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    doc.text(funcaoAssinatura, textoX, y + 20); 
+    doc.setFontSize(8);
+    doc.text(funcaoAssinatura, textoX, y + 23); 
     
     doc.setTextColor(80);
-    doc.text(`Data da Assinatura: ${new Date().toLocaleString('pt-BR')}`, textoX, y + 26);
-    
+    doc.text(`Assinado em: ${new Date().toLocaleString('pt-BR')}`, textoX, y + 28);
     doc.setFont("courier", "normal"); doc.setFontSize(7);
-    doc.text(`HASH DE VALIDAÇÃO: ${codigoAuth}`, textoX, y + 31);
+    doc.text(`HASH: ${codigoAuth}`, textoX, y + 33);
 
     doc.save(`ESCALA_${dadosEscala.unidade}_${dadosEscala.evento}.pdf`);
 }
 
-// Garante que as funções estejam disponíveis globalmente
 window.app = { 
     fazerLogin, fazerCadastro, sair, 
     adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, 
