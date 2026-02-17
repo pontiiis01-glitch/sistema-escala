@@ -224,8 +224,9 @@ export function adicionarOrdem() {
 
     if (!unidade) return alert("Selecione uma unidade!");
     
-    const jaExiste = listaOrdensTemporaria.some(o => o.unidade === unidade);
-    if(jaExiste) return alert(`A unidade ${unidade} já está na lista!`);
+    // ALTERADO: Permite mesma unidade se a função for diferente
+    const jaExiste = listaOrdensTemporaria.some(o => o.unidade === unidade && o.funcao === funcao);
+    if(jaExiste) return alert(`A unidade ${unidade} com a função ${funcao} já está na lista!`);
 
     if (sup==0 && int==0 && sub==0 && esp==0 && pra==0) return alert("Defina a quantidade de militares.");
 
@@ -411,7 +412,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
                 </tr>`;
             } else {
                 militares.forEach((m, index) => {
-                    // Se o militar tiver função individual, mostra ela, senão a geral
                     const funcaoExibida = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
                     html += `<tr>
                         <td class="fw-bold text-center text-muted">${index + 1}</td>
@@ -626,11 +626,9 @@ export async function abrirEdicao(id) {
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-// ATUALIZADO: Agora inclui Select de Função Individual
 function gerarHtmlMilitar(index, tipo, dados, opcoesSelect, funcaoPadrao) {
-    const funcaoSelecionada = dados.funcaoIndividual || funcaoPadrao; // Se já salvou individual usa, senão usa a da escala
+    const funcaoSelecionada = dados.funcaoIndividual || funcaoPadrao; 
     
-    // Cria o select com a função correta selecionada
     const selectHTML = `<select class="form-select campo-funcao fw-bold text-uppercase" style="font-size: 0.8rem;">
         ${opcoesSelect}
     </select>`.replace(`value="${funcaoSelecionada}"`, `value="${funcaoSelecionada}" selected`);
@@ -678,6 +676,9 @@ export async function baixarExcelDoEvento() {
         worksheet.mergeCells('A1:F1');
         titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
         titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
+        
+        // ALTERADO: Fundo AMARELO nas informações do serviço
+        titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; 
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         titleRow.height = 30;
 
@@ -686,7 +687,7 @@ export async function baixarExcelDoEvento() {
         
         for(let i = 1; i <= 6; i++) {
             const cell = headerRow.getCell(i);
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Mantido cinza para o cabeçalho das colunas
             cell.font = { bold: true, color: { argb: 'FF000000' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
@@ -702,20 +703,41 @@ export async function baixarExcelDoEvento() {
                 const funcaoFinal = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, funcaoFinal ]);
                 
-                // Lógica de Negrito Parcial
+                // --- NOVA LÓGICA DE NEGRITO PARCIAL (Rich Text) ---
                 const nomeUpper = m.nome.toUpperCase().trim();
-                const guerraUpper = m.guerra.toUpperCase().trim();
+                const guerraUpper = m.guerra.toUpperCase().trim().replace(/\./g, ''); // Remove pontos para facilitar
+                const partesGuerra = guerraUpper.split(' ').filter(p => p.length > 0);
+                
                 let richTextValue = [];
-                
-                const indexGuerra = nomeUpper.indexOf(guerraUpper);
-                
-                if (indexGuerra !== -1 && guerraUpper.length > 0) {
-                     if(indexGuerra > 0) richTextValue.push({ text: nomeUpper.substring(0, indexGuerra), font: { bold: false, name: 'Arial' } });
-                     richTextValue.push({ text: nomeUpper.substring(indexGuerra, indexGuerra + guerraUpper.length), font: { bold: true, name: 'Arial' } });
-                     if(indexGuerra + guerraUpper.length < nomeUpper.length) richTextValue.push({ text: nomeUpper.substring(indexGuerra + guerraUpper.length), font: { bold: false, name: 'Arial' } });
-                } else {
-                    richTextValue = [{ text: nomeUpper, font: { bold: false, name: 'Arial' } }];
+                let mapNegrito = new Array(nomeUpper.length).fill(false);
+
+                // Mapeia quais caracteres devem ficar em negrito
+                partesGuerra.forEach(parte => {
+                    const idx = nomeUpper.indexOf(parte);
+                    if (idx !== -1) {
+                        for(let k=0; k < parte.length; k++) mapNegrito[idx+k] = true;
+                    }
+                });
+
+                // Constrói o RichText baseado no mapa
+                let currentText = "";
+                let currentBold = mapNegrito[0];
+
+                for(let i=0; i < nomeUpper.length; i++) {
+                    if(mapNegrito[i] === currentBold) {
+                        currentText += nomeUpper[i];
+                    } else {
+                        if(currentText) {
+                           richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } });
+                        }
+                        currentText = nomeUpper[i];
+                        currentBold = mapNegrito[i];
+                    }
                 }
+                if(currentText) {
+                    richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } });
+                }
+                // --------------------------------------------------
 
                 row.getCell(3).value = { richText: richTextValue };
                 row.eachCell((cell) => {
@@ -738,7 +760,7 @@ export function abrirPreviaRecibo() {
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
-        const funcaoIndividual = row.querySelector('.campo-funcao').value; // PEGA FUNÇÃO INDIVIDUAL
+        const funcaoIndividual = row.querySelector('.campo-funcao').value; 
         
         if(posto && nome && guerra && contato.length >= 8) {
             lista.push({ posto, nome, guerra, contato, funcaoIndividual });
@@ -769,13 +791,13 @@ export function abrirTelaAssinatura() {
     
     // Limpa campos
     document.getElementById('assinatura-nome').value = '';
-    document.getElementById('assinatura-nome-completo').value = ''; // Limpa o novo campo
+    document.getElementById('assinatura-nome-completo').value = ''; 
     document.getElementById('assinatura-funcao').value = '';
 }
 
 export function solicitarConfirmacaoSenha() {
     const nomeGuerra = document.getElementById('assinatura-nome').value.trim();
-    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim(); // Pega o novo campo
+    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim(); 
     const funcao = document.getElementById('assinatura-funcao').value.trim();
 
     if(nomeGuerra.length < 3 || nomeCompleto.length < 5 || funcao.length < 3) {
@@ -821,7 +843,7 @@ export async function validarSenhaEGerarPDF() {
 
 async function finalizarEnvioReal() {
     const nomeGuerra = document.getElementById('assinatura-nome').value.trim().toUpperCase();
-    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim().toUpperCase(); // NOVO
+    const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim().toUpperCase(); 
     const funcaoAssinatura = document.getElementById('assinatura-funcao').value.trim().toUpperCase();
     
     document.getElementById('recibo-modal').classList.remove('active');
@@ -840,8 +862,8 @@ async function finalizarEnvioReal() {
             status: "Preenchido", 
             codigoAutenticacao: codigoAuth, 
             dataValidacao: dataHoraEnvio,
-            assinadoPor: nomeGuerra, // Salva o nome de guerra para exibição rápida
-            assinadoNomeCompleto: nomeCompleto, // Salva o nome completo para fins legais
+            assinadoPor: nomeGuerra, 
+            assinadoNomeCompleto: nomeCompleto, 
             assinadoFuncao: funcaoAssinatura
         });
 
@@ -853,7 +875,6 @@ async function finalizarEnvioReal() {
             status: "Válido"
         });
 
-        // Passamos o nomeCompleto para o PDF
         await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeGuerra, nomeCompleto, funcaoAssinatura, dadosEscala);
         
         alert("Escala assinada e enviada com sucesso!");
@@ -927,16 +948,19 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", CENTRO_X, y+35, { align: "center" });
     doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", CENTRO_X, y+40, { align: "center" });
     
-    // Nome da Unidade agora no corpo, não no cabeçalho fixo
-    const nomeUnidade = (perfilAtual.unidade || dadosEscala.unidade || "COMANDO OPERACIONAL").toUpperCase();
-    doc.text(nomeUnidade, CENTRO_X, y+45, { align: "center" });
+    // ALTERADO: Removido nomeUnidade do cabeçalho superior
 
     y = 65;
     doc.setFontSize(14); doc.text("ESCALA DE SERVIÇO", CENTRO_X, y, { align: "center" });
     y += 12;
 
+    const nomeUnidade = (perfilAtual.unidade || dadosEscala.unidade || "COMANDO OPERACIONAL").toUpperCase();
+
     doc.setFontSize(10); doc.setFont("helvetica", "bold");
     doc.text(`OPERAÇÃO: ${dadosEscala.evento}`, MARGEM_ESQ, y); y += 5;
+
+    // ALTERADO: Nome da Unidade movido para cá
+    doc.text(`UNIDADE: ${nomeUnidade}`, MARGEM_ESQ, y); y += 5;
     
     const dataObj = new Date(dadosEscala.data + "T12:00:00"); 
     const opcoesData = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -1008,12 +1032,10 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     
     // NOME COMPLETO + POSTO NA ASSINATURA
     doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    // Combina Posto (extraído do nome de guerra ou input) se possível, aqui usa o nome de guerra pra identificar patente se tiver
-    // Mas o usuário pediu Posto/Graduação na assinatura. O input assinatura-nome é "Posto e Guerra".
-    // Vamos usar o Nome Completo abaixo.
-    doc.text(nomeGuerraAssinatura, textoX, y + 14); // Ex: 2 TEN MOREIRA
+    
+    doc.text(nomeGuerraAssinatura, textoX, y + 14); 
     doc.setFont("helvetica", "normal");
-    doc.text(nomeCompletoAssinatura, textoX, y + 18); // Ex: IGOR MOREIRA PONTES
+    doc.text(nomeCompletoAssinatura, textoX, y + 18); 
     
     doc.setFontSize(8);
     doc.text(funcaoAssinatura, textoX, y + 23); 
