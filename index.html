@@ -40,14 +40,14 @@
         /* HEADER */
         .header-tactical {
             background: linear-gradient(180deg, #000000 0%, var(--cbm-red) 140%);
-            padding: 2rem 1rem 6rem 1rem; /* Padding ajustado */
+            padding: 2rem 1rem 6rem 1rem; 
             position: relative; z-index: 0;
             text-align: center;
             border-bottom: 4px solid var(--cbm-gold);
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
         
-        /* BRASÃO CORRIGIDO */
+        /* BRASÃO FIXADO */
         .brasao-central {
             width: 130px; 
             height: 130px; 
@@ -56,7 +56,6 @@
             display: block;
             margin: 0 auto 1rem auto;
             background-color: transparent;
-            border-radius: 50%; /* Opcional, se a imagem for quadrada ajuda a arredondar */
         }
         
         .system-title {
@@ -127,7 +126,7 @@
 <body>
     <header class="header-tactical">
         <div class="container d-flex flex-column align-items-center animate-up">
-            <img src="brasao_unidade.png" class="brasao-central" alt="Brasão Unidade" onerror="this.src='brasao.png';"> 
+            <img src="brasao_unidade.jpg" class="brasao-central" alt="Brasão Unidade" onerror="this.src='brasao.png';"> 
             <h1 class="system-title">Comando Operacional Metropolitano</h1>
             <p class="text-white-50 fw-bold small text-uppercase" style="font-size: 1.0rem;">Sistema Integrado de Escalas em Grandes Eventos</p>
         </div>
@@ -216,7 +215,7 @@
                 <div class="row g-4">
                     <div class="col-lg-5">
                         <div class="bg-white p-4 rounded-4 shadow-sm h-100 animate-up border-top border-4 border-danger">
-                            <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão (Multi-Função)</h6>
+                            <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão</h6>
                             <div class="mb-3">
                                 <label class="form-label-custom">Operação</label>
                                 <input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME" oninput="this.value = this.value.toUpperCase()">
@@ -287,10 +286,8 @@
                  <h5 class="fw-black text-uppercase m-0">Editar Solicitação</h5>
                  <p class="text-muted small m-0" id="edit-admin-subtitle">...</p>
             </div>
-            
             <div class="p-4" style="max-height: 60vh; overflow-y: auto;">
                 <div id="container-editar-cotas"></div>
-                
                 <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mt-4">
                     <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
                     <div class="row g-2">
@@ -299,7 +296,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="p-3 border-top d-flex gap-2">
                 <button onclick="fecharModal('modal-editar-admin')" class="btn btn-light w-50 fw-bold rounded-3 ios-click">Cancelar</button>
                 <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3 ios-click">Salvar Alterações</button>
@@ -333,22 +329,18 @@
                 <h5 class="fw-black text-dark text-uppercase m-0">Assinatura Digital</h5>
                 <p class="text-muted small">Dados jurídicos do responsável pelo envio</p>
             </div>
-            
             <div class="mb-3">
                 <label class="form-label-custom">Posto/Grad e Nome de Guerra</label>
                 <input type="text" id="assinatura-nome" class="form-control fw-bold text-uppercase" placeholder="EX: 1º TEN QOC SILVA">
             </div>
-
             <div class="mb-3">
                 <label class="form-label-custom text-danger">Nome Completo (Para o PDF)</label>
                 <input type="text" id="assinatura-nome-completo" class="form-control fw-bold text-uppercase border-danger" placeholder="EX: JOÃO DA SILVA PEREIRA">
             </div>
-
             <div class="mb-4">
                 <label class="form-label-custom">Função no Serviço</label>
                 <input type="text" id="assinatura-funcao" class="form-control fw-bold text-uppercase" placeholder="EX: OFICIAL DE DIA / ESCALANTE">
             </div>
-
             <button onclick="solicitarConfirmacaoSenha()" class="btn btn-success w-100 py-3 fw-bold rounded-4 mb-2 ios-click text-uppercase">
                 <i class="bi bi-file-earmark-pdf-fill me-2"></i> Confirmar e Assinar
             </button>
@@ -421,9 +413,10 @@
     </div>
 
     <div id="modal-validador" class="modal-overlay-custom">
-        <div class="modal-content-custom p-0" style="max-width: 400px; height: auto; border-radius: 20px; overflow: hidden;">
-            <div class="bg-white p-4 d-flex flex-column h-100">
-                <div class="text-center mb-4 pt-3">
+        <div class="modal-content-custom p-0" style="max-width: 400px; height: 80vh; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <div class="bg-white p-4 flex-grow-1" style="overflow-y: auto;">
+                <div class="text-center mb-4 pt-1">
                     <div class="bg-success bg-opacity-10 d-inline-block p-3 rounded-circle mb-3">
                         <i class="bi bi-shield-check text-success display-4"></i>
                     </div>
@@ -438,8 +431,10 @@
                 </div>
 
                 <div id="resultado-validacao" style="display: none;"></div>
+            </div>
 
-                <div class="mt-auto d-grid gap-2 pt-4">
+            <div class="p-3 bg-white border-top">
+                <div class="d-grid gap-2">
                     <button onclick="consultarAutenticidade()" class="btn btn-dark py-3 fw-bold rounded-4 text-uppercase">VERIFICAR AGORA</button>
                     <button onclick="fecharModal('modal-validador')" class="btn btn-secondary py-3 fw-bold rounded-4 text-uppercase">FECHAR</button>
                 </div>
@@ -447,7 +442,7 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=10"></script>
+    <script type="module" src="app.js?v=11"></script>
     
     <script>
         window.toggleSenha = (idInput, iconElement) => {
@@ -475,5 +470,4 @@
         }
     </script>
 </body>
-
 </html>
