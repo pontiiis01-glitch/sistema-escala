@@ -24,7 +24,7 @@ let eventoPreviewAtual = null;
 let listaOrdensTemporaria = [];
 let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
-let demandasEdicaoCache = []; // Para armazenar temporariamente as demandas na edição
+let demandasEdicaoCache = []; 
 
 // === UTILITÁRIOS & SEGURANÇA ===
 
@@ -207,7 +207,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ================= ADMIN: GERENCIAMENTO COM AGRUPAMENTO =================
+// ================= ADMIN: GERENCIAMENTO COM AGRUPAMENTO INTELIGENTE =================
 export function adicionarOrdem() {
     const unidade = document.getElementById('select-unidade').value;
     const funcao = document.getElementById('select-funcao').value;
@@ -228,10 +228,22 @@ export function adicionarOrdem() {
     };
 
     if (itemExistente) {
-        const funcRepetida = itemExistente.demandas.some(d => d.funcao === funcao);
-        if(funcRepetida) return alert(`A função ${funcao} já foi adicionada para a unidade ${unidade}.`);
-        itemExistente.demandas.push(novaDemanda);
+        // ALTERADO: Agora procuramos se a função já existe
+        const demandaExistente = itemExistente.demandas.find(d => d.funcao === funcao);
+
+        if (demandaExistente) {
+            // SE JÁ EXISTIR A FUNÇÃO, SOMAMOS AS QUANTIDADES (NÃO BLOQUEIA MAIS)
+            demandaExistente.cota.superior = parseInt(demandaExistente.cota.superior) + parseInt(sup);
+            demandaExistente.cota.intermediario = parseInt(demandaExistente.cota.intermediario) + parseInt(int);
+            demandaExistente.cota.subalterno = parseInt(demandaExistente.cota.subalterno) + parseInt(sub);
+            demandaExistente.cota.especial = parseInt(demandaExistente.cota.especial) + parseInt(esp);
+            demandaExistente.cota.praca = parseInt(demandaExistente.cota.praca) + parseInt(pra);
+        } else {
+            // Se a função não existe nesta unidade, adicionamos ela à lista
+            itemExistente.demandas.push(novaDemanda);
+        }
     } else {
+        // Se a unidade não estava na lista, cria tudo novo
         listaOrdensTemporaria.push({ 
             id: Date.now(), 
             unidade, 
