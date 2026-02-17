@@ -48,12 +48,14 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
         
-        /* ALTERADO: BRASÃO ESTÁTICO COM SOMBRA */
         .brasao-central {
             width: 140px; height: 140px; object-fit: contain;
-            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5)); /* Sombra moderna */
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
             margin-bottom: 1rem;
-            /* Animação removida conforme solicitado */
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: transparent;
         }
         
         .system-title {
@@ -124,7 +126,7 @@
 <body>
     <header class="header-tactical">
         <div class="container d-flex flex-column align-items-center animate-up">
-            <img src="brasao_unidade.jpg" class="brasao-central" alt="Brasão"> 
+            <img src="brasao_unidade.jpg" class="brasao-central" alt="Brasão Unidade" onerror="this.style.display='none';"> 
             <h1 class="system-title">Comando Operacional Metropolitano</h1>
             <p class="text-white-50 fw-bold small text-uppercase" style="font-size: 1.0rem;">Sistema Integrado de Escalas em Grandes Eventos</p>
         </div>
@@ -213,7 +215,7 @@
                 <div class="row g-4">
                     <div class="col-lg-5">
                         <div class="bg-white p-4 rounded-4 shadow-sm h-100 animate-up border-top border-4 border-danger">
-                            <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão</h6>
+                            <h6 class="fw-black text-dark mb-4 text-uppercase"><i class="bi bi-plus-square-fill text-danger me-2"></i>Nova Missão (Multi-Função)</h6>
                             <div class="mb-3">
                                 <label class="form-label-custom">Operação</label>
                                 <input type="text" id="nome-evento" class="form-control fw-bold text-uppercase" placeholder="DIGITE O NOME" oninput="this.value = this.value.toUpperCase()">
@@ -233,10 +235,13 @@
                                 </div>
                             </div>
                             <hr class="text-muted opacity-25">
+                            <div class="alert alert-light border small text-center mb-3">
+                                <i class="bi bi-info-circle me-1"></i> Adicione várias funções para a mesma unidade antes de disparar.
+                            </div>
                             <div class="mb-2"><label class="form-label-custom">Unidade Destino</label><select id="select-unidade" class="form-select fw-bold"></select></div>
-                            <div class="mb-3"><label class="form-label-custom">Função Geral (Padrão)</label><select id="select-funcao" class="form-select text-uppercase"></select></div>
+                            <div class="mb-3"><label class="form-label-custom">Adicionar Função</label><select id="select-funcao" class="form-select text-uppercase"></select></div>
                             
-                            <label class="form-label-custom text-center mb-2 bg-light rounded p-1">COTAS (Preencha as quantidades)</label>
+                            <label class="form-label-custom text-center mb-2 bg-light rounded p-1">COTAS DESTA FUNÇÃO</label>
                             <div class="cota-grid mb-4">
                                 <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Of. Superior</label><input type="number" id="input-sup" class="form-control text-center fw-bold px-1" placeholder="0"></div>
                                 <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Of. Intermed.</label><input type="number" id="input-int" class="form-control text-center fw-bold px-1" placeholder="0"></div>
@@ -277,18 +282,9 @@
 
     <div id="modal-editar-admin" class="modal-overlay-custom">
         <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
-            <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Editar Solicitação</h5><p class="text-muted small" id="edit-admin-subtitle">...</p></div>
-            <div class="mb-3"><label class="form-label-custom">Nova Função</label><select id="edit-admin-funcao" class="form-select text-uppercase"></select></div>
+             <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Gerenciar Solicitação</h5></div>
+            <p class="text-center text-muted">Devido à complexidade de múltiplas funções, exclua e crie novamente se precisar alterar cotas.</p>
             
-            <label class="form-label-custom text-center mb-2 bg-light rounded p-1">COTAS</label>
-            <div class="cota-grid mb-3">
-                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Superior</label><input type="number" id="edit-admin-sup" class="form-control text-center fw-bold px-1"></div>
-                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Intermed.</label><input type="number" id="edit-admin-int" class="form-control text-center fw-bold px-1"></div>
-                <div><label class="form-label-custom text-center" style="font-size: 0.6rem;">Subalt.</label><input type="number" id="edit-admin-sub" class="form-control text-center fw-bold px-1"></div>
-                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Esp.</label><input type="number" id="edit-admin-esp" class="form-control text-center fw-bold px-1"></div>
-                <div style="grid-column: span 1.5;"><label class="form-label-custom text-center" style="font-size: 0.6rem;">Praça</label><input type="number" id="edit-admin-pra" class="form-control text-center fw-bold px-1"></div>
-            </div>
-
             <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-4">
                 <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
                 <div class="row g-2">
@@ -418,7 +414,7 @@
 
     <div id="modal-validador" class="modal-overlay-custom">
         <div class="modal-content-custom p-0" style="max-width: 400px; height: auto; border-radius: 20px; overflow: hidden;">
-            <div class="bg-white p-4">
+            <div class="bg-white p-4 d-flex flex-column h-100">
                 <div class="text-center mb-4 pt-3">
                     <div class="bg-success bg-opacity-10 d-inline-block p-3 rounded-circle mb-3">
                         <i class="bi bi-shield-check text-success display-4"></i>
@@ -435,15 +431,15 @@
 
                 <div id="resultado-validacao" style="display: none;"></div>
 
-                <div class="d-grid gap-2 mt-4">
+                <div class="mt-auto d-grid gap-2 pt-4">
                     <button onclick="consultarAutenticidade()" class="btn btn-dark py-3 fw-bold rounded-4 text-uppercase">VERIFICAR AGORA</button>
-                    <button onclick="fecharModal('modal-validador')" class="btn btn-secondary py-3 fw-bold rounded-4 text-uppercase">FECHAR TELA</button>
+                    <button onclick="fecharModal('modal-validador')" class="btn btn-secondary py-3 fw-bold rounded-4 text-uppercase">FECHAR</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="app.js?v=7"></script>
+    <script type="module" src="app.js?v=9"></script>
     
     <script>
         window.toggleSenha = (idInput, iconElement) => {

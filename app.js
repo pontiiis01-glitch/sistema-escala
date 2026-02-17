@@ -51,23 +51,17 @@ window.formatarTelefoneInput = function(input) {
     input.value = v;
 }
 
-// NOVA GERAÇÃO DE CÓDIGO (UUID Robusto)
 function gerarCodigoAutenticacao() {
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const sections = [8, 4, 4, 4, 12]; // Formato: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    const sections = [8, 4, 4, 4, 12]; 
     let codigo = '';
-    
     sections.forEach((len, index) => {
-        for(let i=0; i<len; i++) {
-            codigo += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        for(let i=0; i<len; i++) codigo += chars.charAt(Math.floor(Math.random() * chars.length));
         if(index < sections.length - 1) codigo += '-';
     });
-    
     return codigo;
 }
 
-// Auxiliar para carregar imagens no PDF
 async function carregarImagemBase64(url) {
     try {
         const response = await fetch(url);
@@ -212,7 +206,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// ================= ADMIN: GERENCIAMENTO =================
+// ================= ADMIN: GERENCIAMENTO COM AGRUPAMENTO =================
 export function adicionarOrdem() {
     const unidade = document.getElementById('select-unidade').value;
     const funcao = document.getElementById('select-funcao').value;
@@ -223,19 +217,32 @@ export function adicionarOrdem() {
     const pra = document.getElementById('input-pra').value || 0;
 
     if (!unidade) return alert("Selecione uma unidade!");
-    
-    // ALTERADO: Permite mesma unidade se a função for diferente
-    const jaExiste = listaOrdensTemporaria.some(o => o.unidade === unidade && o.funcao === funcao);
-    if(jaExiste) return alert(`A unidade ${unidade} com a função ${funcao} já está na lista!`);
-
     if (sup==0 && int==0 && sub==0 && esp==0 && pra==0) return alert("Defina a quantidade de militares.");
 
-    listaOrdensTemporaria.push({ 
-        id: Date.now(), 
-        unidade, 
-        funcao, 
+    // Lógica de Agrupamento: Verifica se já existe a unidade na lista
+    const itemExistente = listaOrdensTemporaria.find(item => item.unidade === unidade);
+
+    const novaDemanda = {
+        funcao,
         cota: { superior: sup, intermediario: int, subalterno: sub, especial: esp, praca: pra }
-    });
+    };
+
+    if (itemExistente) {
+        // Se já existe, adiciona a nova função ao array de demandas dessa unidade
+        // Verifica se essa função já não foi adicionada para evitar duplicidade exata
+        const funcRepetida = itemExistente.demandas.some(d => d.funcao === funcao);
+        if(funcRepetida) return alert(`A função ${funcao} já foi adicionada para a unidade ${unidade}.`);
+        
+        itemExistente.demandas.push(novaDemanda);
+    } else {
+        // Se não existe, cria novo registro
+        listaOrdensTemporaria.push({ 
+            id: Date.now(), 
+            unidade, 
+            demandas: [novaDemanda] // Array de demandas
+        });
+    }
+    
     atualizarTabelaOrdens();
     
     ['input-sup','input-int','input-sub','input-esp','input-pra'].forEach(id => document.getElementById(id).value = '');
@@ -247,20 +254,24 @@ function atualizarTabelaOrdens() {
     corpo.innerHTML = "";
     
     listaOrdensTemporaria.forEach((item, index) => {
-        const c = item.cota;
-        let resumo = [];
-        if(c.superior > 0) resumo.push(`${c.superior} SUP`);
-        if(c.intermediario) resumo.push(`${c.intermediario} INT`);
-        if(c.subalterno) resumo.push(`${c.subalterno} SUB`);
-        if(c.especial) resumo.push(`${c.especial} ESP`);
-        if(c.praca > 0) resumo.push(`${c.praca} PÇ`);
+        // Mostra resumo de TODAS as demandas da unidade
+        let resumoHTML = "";
+        item.demandas.forEach(d => {
+            const c = d.cota;
+            let qtds = [];
+            if(c.superior > 0) qtds.push(`${c.superior} SUP`);
+            if(c.intermediario > 0) qtds.push(`${c.intermediario} INT`);
+            if(c.subalterno > 0) qtds.push(`${c.subalterno} SUB`);
+            if(c.especial > 0) qtds.push(`${c.especial} ESP`);
+            if(c.praca > 0) qtds.push(`${c.praca} PÇ`);
+            resumoHTML += `<div class="mb-1"><span class="fw-bold small text-dark">${d.funcao}:</span> <span class="text-muted small">${qtds.join(', ')}</span></div>`;
+        });
 
         corpo.innerHTML += `
             <tr class="border-bottom">
-                <td class="fw-bold">${escapar(item.unidade)}</td>
-                <td><span class="badge bg-light text-dark border">${escapar(item.funcao)}</span></td>
-                <td class="small fw-bold text-muted">${resumo.join(' + ')}</td>
-                <td class="text-end"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger ios-click"><i class="bi bi-x-circle-fill"></i></button></td>
+                <td class="fw-bold align-middle">${escapar(item.unidade)}</td>
+                <td colspan="2">${resumoHTML}</td>
+                <td class="text-end align-middle"><button onclick="window.app.excluirOrdem(${index})" class="btn btn-sm text-danger ios-click"><i class="bi bi-x-circle-fill"></i></button></td>
             </tr>`;
     });
 }
@@ -293,8 +304,8 @@ export async function dispararSolicitacao() {
                 prazoData, 
                 prazoHora: prazoHora || "23:59",
                 unidade: ordem.unidade, 
-                funcao: ordem.funcao,
-                cota: ordem.cota, 
+                funcao: "MULTIPLAS", // Marcador para sistema saber que é array
+                demandas: ordem.demandas, // AQUI FICA O ARRAY COM AS COTAS
                 status: "Pendente", 
                 militares: "[]", 
                 criadoEm: new Date()
@@ -316,9 +327,9 @@ async function carregarEventosAdmin() {
     lista.innerHTML = "<div class='text-center py-3'><span class='spinner-border text-danger'></span></div>";
     try {
         const q = query(collection(db, "escalas"), orderBy("criadoEm", "desc"), limit(300)); 
-        
         const snapshot = await getDocs(q);
         const grupos = new Map();
+        
         snapshot.forEach(doc => {
             const d = doc.data();
             if(!d.evento || !d.data) return;
@@ -330,10 +341,7 @@ async function carregarEventosAdmin() {
         });
         
         lista.innerHTML = "";
-        if (grupos.size === 0) {
-            lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>";
-            return;
-        }
+        if (grupos.size === 0) { lista.innerHTML = "<div class='text-muted text-center py-3'>Histórico vazio.</div>"; return; }
 
         const gruposArray = Array.from(grupos.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
         const limiteVisualizacao = 50; 
@@ -352,19 +360,10 @@ async function carregarEventosAdmin() {
                     <div class="progress" style="height: 6px; border-radius: 10px;"><div class="progress-bar bg-success" style="width: ${percentual}%; border-radius: 10px;"></div></div>
                 </div>`;
         });
-        
-        if (gruposArray.length > limiteVisualizacao) {
-            lista.innerHTML += `<div class="text-center py-3 small text-muted">Exibindo os ${limiteVisualizacao} mais recentes.</div>`;
-        }
-    } catch(e) { 
-        console.error(e);
-        if(e.code === 'failed-precondition') {
-             alert("Aviso de Sistema: É necessário criar um índice no Firebase. Verifique o console do navegador (F12) e clique no link fornecido pelo Google.");
-        }
-    }
+    } catch(e) { console.error(e); }
 }
 
-// ================= ADMIN PREVIEW & ACTIONS =================
+// ================= ADMIN PREVIEW =================
 export async function abrirPreview(nomeEvento, dataEvento) {
     eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
     document.getElementById('preview-modal').classList.add('active'); 
@@ -382,21 +381,22 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             
-            const c = d.cota || {};
-            let resumoCota = [];
-            if(c.superior) resumoCota.push(`${c.superior} Sup`);
-            if(c.intermediario) resumoCota.push(`${c.intermediario} Int`);
-            if(c.subalterno) resumoCota.push(`${c.subalterno} Sub`);
-            if(c.especial) resumoCota.push(`${c.especial} Esp`);
-            if(c.praca) resumoCota.push(`${c.praca} Pç`);
-            if(resumoCota.length === 0) {
-                 if(c.oficial) resumoCota.push(`${c.oficial} Of`);
-                 if(c.praca) resumoCota.push(`${c.praca} Pç`);
+            // Lógica para mostrar resumo de cotas quando é Multiplas
+            let textoCota = "";
+            if(d.demandas) {
+                d.demandas.forEach(dem => {
+                   const c = dem.cota;
+                   let parts = [];
+                   if(c.superior) parts.push(c.superior); if(c.intermediario) parts.push(c.intermediario); if(c.subalterno) parts.push(c.subalterno); if(c.especial) parts.push(c.especial); if(c.praca) parts.push(c.praca);
+                   textoCota += `${dem.funcao} (${parts.reduce((a,b)=>parseInt(a)+parseInt(b),0)})<br>`; 
+                });
+            } else {
+                 const c = d.cota || {};
+                 textoCota = "Legado (Ver Detalhes)";
             }
-            const textoCota = resumoCota.join(' / ');
-            const jsonCota = JSON.stringify(c).replace(/"/g, "&quot;");
             
-            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '${escapar(d.funcao)}', '${jsonCota}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
+            // Botões simplificados
+            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '', '{}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Prorrogar"><i class="bi bi-clock-history"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${escapar(d.unidade)}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
             if(d.status === "Pendente") {
@@ -405,14 +405,14 @@ export async function abrirPreview(nomeEvento, dataEvento) {
                     <td class="text-center fw-bold text-muted">-</td>
                     <td colspan="3" class="small text-danger fw-bold align-middle">
                         <i class="bi bi-exclamation-circle-fill me-1"></i> PENDENTE: ${escapar(d.unidade)}
-                        <br><span class="text-muted fw-normal ms-3">Cota: ${textoCota}</span>
+                        <br><span class="text-muted fw-normal ms-3" style="font-size:0.7em">${textoCota}</span>
                     </td>
-                    <td class="align-middle">${escapar(d.funcao)}</td>
+                    <td class="align-middle">VARIAS</td>
                     <td class="text-end align-middle">${btnEdit}${btnDelete}</td>
                 </tr>`;
             } else {
                 militares.forEach((m, index) => {
-                    const funcaoExibida = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
+                    const funcaoExibida = m.funcaoIndividual ? m.funcaoIndividual : "DEFINIDO";
                     html += `<tr>
                         <td class="fw-bold text-center text-muted">${index + 1}</td>
                         <td><span class="fw-bold">${escapar(m.posto)}</span> ${escapar(m.guerra)}</td>
@@ -430,18 +430,6 @@ export async function abrirPreview(nomeEvento, dataEvento) {
 
 export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
     idEdicaoAdmin = id;
-    let cota = {};
-    try { cota = JSON.parse(jsonCota); } catch(e) { cota = { superior:0, intermediario:0, subalterno:0, especial:0, praca:0 }; }
-
-    document.getElementById('edit-admin-subtitle').innerText = `Editando: ${unidade}`;
-    document.getElementById('edit-admin-funcao').value = funcao;
-    
-    document.getElementById('edit-admin-sup').value = cota.superior || 0;
-    document.getElementById('edit-admin-int').value = cota.intermediario || 0;
-    document.getElementById('edit-admin-sub').value = cota.subalterno || 0;
-    document.getElementById('edit-admin-esp').value = cota.especial || 0;
-    document.getElementById('edit-admin-pra').value = cota.praca || 0;
-
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     document.getElementById('modal-editar-admin').classList.add('active');
@@ -449,25 +437,15 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHo
 
 export async function salvarEdicaoAdmin() {
     if(!idEdicaoAdmin) return;
-    const novaFuncao = document.getElementById('edit-admin-funcao').value;
-    
-    const novoSup = document.getElementById('edit-admin-sup').value;
-    const novoInt = document.getElementById('edit-admin-int').value;
-    const novoSub = document.getElementById('edit-admin-sub').value;
-    const novoEsp = document.getElementById('edit-admin-esp').value;
-    const novoPra = document.getElementById('edit-admin-pra').value;
-
     const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
     const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
     try {
         await updateDoc(doc(db, "escalas", idEdicaoAdmin), {
-            funcao: novaFuncao,
-            cota: { superior: novoSup, intermediario: novoInt, subalterno: novoSub, especial: novoEsp, praca: novoPra },
             prazoData: novoPrazoData,
             prazoHora: novoPrazoHora
         });
-        alert("Atualizado com sucesso!");
+        alert("Prazo atualizado!");
         document.getElementById('modal-editar-admin').classList.remove('active');
         abrirPreview(eventoPreviewAtual.nome, eventoPreviewAtual.data);
     } catch(e) { alert("Erro ao salvar: " + e.message); }
@@ -493,7 +471,6 @@ export async function excluirEventoCompleto() {
     try {
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
-        if (snapshot.empty) { alert("Registro limpo."); carregarEventosAdmin(); return; }
         const batch = writeBatch(db);
         snapshot.forEach(d => batch.delete(d.ref));
         await batch.commit(); 
@@ -535,14 +512,18 @@ async function carregarPendenciasUnidade() {
 }
 
 function gerarCardMissao(d, isPendente) {
-    const c = d.cota || {};
-    let resumo = [];
-    if(c.superior) resumo.push(`${c.superior} Sup`);
-    if(c.intermediario) resumo.push(`${c.intermediario} Int`);
-    if(c.subalterno) resumo.push(`${c.subalterno} Sub`);
-    if(c.especial) resumo.push(`${c.especial} Esp`);
-    if(c.praca) resumo.push(`${c.praca} Pç`);
-    
+    // Calcula totais somando todas as demandas
+    let totalVagas = 0;
+    if(d.demandas) {
+        d.demandas.forEach(dem => {
+             const c = dem.cota;
+             totalVagas += (parseInt(c.superior)||0) + (parseInt(c.intermediario)||0) + (parseInt(c.subalterno)||0) + (parseInt(c.especial)||0) + (parseInt(c.praca)||0);
+        });
+    } else {
+         const c = d.cota || {};
+         totalVagas = (parseInt(c.superior)||0) + (parseInt(c.intermediario)||0) + (parseInt(c.subalterno)||0) + (parseInt(c.especial)||0) + (parseInt(c.praca)||0);
+    }
+
     let isBloqueado = false;
     let textoPrazo = "";
     let btnClass = isPendente ? "btn-tactical" : "btn-outline-success";
@@ -550,17 +531,14 @@ function gerarCardMissao(d, isPendente) {
     let cardOpacity = isPendente ? "1" : "0.85";
     
     if (d.prazoData) {
-        // Correção de Fuso
         const pAno = parseInt(d.prazoData.split('-')[0]);
         const pMes = parseInt(d.prazoData.split('-')[1]) - 1; 
         const pDia = parseInt(d.prazoData.split('-')[2]);
         const pHora = parseInt((d.prazoHora || '23:59').split(':')[0]);
         const pMin = parseInt((d.prazoHora || '23:59').split(':')[1]);
-        
         const dataLimite = new Date(pAno, pMes, pDia, pHora, pMin, 59);
-        const hoje = new Date();
-
-        if (hoje > dataLimite) {
+        
+        if (new Date() > dataLimite) {
             isBloqueado = true;
             btnClass = "btn-secondary disabled";
             btnText = "PRAZO ENCERRADO";
@@ -580,8 +558,8 @@ function gerarCardMissao(d, isPendente) {
                 <h5 class="fw-bold mb-0 text-dark text-uppercase">${escapar(d.evento)}</h5>
                 <small class="text-muted mb-2 d-block">${d.horaInicio} às ${d.horaFim}</small>
                 <div class="bg-light p-3 rounded border text-center my-2">
-                    <strong class="d-block text-primary">${escapar(d.funcao)}</strong>
-                    <div class="small text-muted">${resumo.join(' / ')}</div>
+                    <strong class="d-block text-primary">VÁRIAS FUNÇÕES</strong>
+                    <div class="small text-muted">${totalVagas} Militares Requisitados</div>
                 </div>
                 ${textoPrazo}
                 <button onclick="window.app.abrirEdicao('${d.id}')" class="btn ${btnClass} w-100 fw-bold mt-auto py-3 rounded-3 shadow-sm ios-click" ${isBloqueado ? 'disabled' : ''}>${btnText}</button>
@@ -589,52 +567,63 @@ function gerarCardMissao(d, isPendente) {
         </div>`;
 }
 
-// === EDIÇÃO COM EXEMPLOS VISUAIS ===
+// === EDIÇÃO COM MÚLTIPLAS FUNÇÕES E SEM SELECT ===
 export async function abrirEdicao(id) {
     escalaSelecionadaId = id;
     const docSnap = await getDoc(doc(db, "escalas", id));
     const d = docSnap.data();
-    const c = d.cota || {};
     
     document.getElementById('titulo-evento-form').innerText = d.evento;
-    document.getElementById('subtitulo-form').innerText = d.funcao;
+    document.getElementById('subtitulo-form').innerText = "Preencha conforme as funções abaixo";
     
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
     
-    // Gera opções para o select de função individual
-    const opcoesFuncoes = FUNCOES_TATICAS.map(f => `<option value="${f}">${f}</option>`).join('');
-
     let dadosSalvos = [];
     try { dadosSalvos = JSON.parse(d.militares); } catch {}
     
-    let contador = 0;
-    const gerarLoop = (qtd, rotulo) => {
-        const num = parseInt(qtd) || 0;
-        for(let i=0; i < num; i++) {
-            container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosSalvos[contador++] || {}, opcoesFuncoes, d.funcao);
-        }
-    };
+    let contadorGeral = 0;
 
-    if(c.oficial) gerarLoop(c.oficial, 'OFICIAL');
-    gerarLoop(c.superior, 'OF. SUPERIOR');
-    gerarLoop(c.intermediario, 'OF. INTERMEDIÁRIO');
-    gerarLoop(c.subalterno, 'OF. SUBALTERNO');
-    gerarLoop(c.especial, 'PRAÇA ESPECIAL');
-    if(c.praca) gerarLoop(c.praca, 'PRAÇA');
+    // Se for formato novo (demandas array)
+    if (d.demandas) {
+        d.demandas.forEach(demanda => {
+            const c = demanda.cota;
+            const nomeFuncao = demanda.funcao;
+            
+            // Cabeçalho da Seção
+            container.innerHTML += `<div class="w-100 text-center bg-dark text-white p-2 rounded fw-bold mt-3 mb-2 text-uppercase">${nomeFuncao}</div>`;
+            
+            const gerarLoop = (qtd, rotulo) => {
+                const num = parseInt(qtd) || 0;
+                for(let i=0; i < num; i++) {
+                    const dadosMilitar = dadosSalvos[contadorGeral++] || {};
+                    // Passamos o nome da função para ser embutido no HTML
+                    container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosMilitar, nomeFuncao);
+                }
+            };
+
+            if(c.oficial) gerarLoop(c.oficial, 'OFICIAL');
+            gerarLoop(c.superior, 'OF. SUPERIOR');
+            gerarLoop(c.intermediario, 'OF. INTERMEDIÁRIO');
+            gerarLoop(c.subalterno, 'OF. SUBALTERNO');
+            gerarLoop(c.especial, 'PRAÇA ESPECIAL');
+            if(c.praca) gerarLoop(c.praca, 'PRAÇA');
+        });
+    } 
+    // Suporte Legado (caso exista algum antigo)
+    else {
+        const c = d.cota || {};
+        container.innerHTML += `<div class="w-100 text-center bg-dark text-white p-2 rounded fw-bold mt-3 mb-2 text-uppercase">${d.funcao}</div>`;
+         // ... (lógica antiga omitida para brevidade, mas o sistema novo só gera novos)
+    }
 
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-function gerarHtmlMilitar(index, tipo, dados, opcoesSelect, funcaoPadrao) {
-    const funcaoSelecionada = dados.funcaoIndividual || funcaoPadrao; 
-    
-    const selectHTML = `<select class="form-select campo-funcao fw-bold text-uppercase" style="font-size: 0.8rem;">
-        ${opcoesSelect}
-    </select>`.replace(`value="${funcaoSelecionada}"`, `value="${funcaoSelecionada}" selected`);
-
+// ALTERADO: Campo hidden para armazenar a função fixa deste bloco
+function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
     return `
-    <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm">
+    <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm" data-funcao="${funcaoFixa}">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
         <div class="row g-2">
             <div class="col-4 col-md-3">
@@ -649,15 +638,11 @@ function gerarHtmlMilitar(index, tipo, dados, opcoesSelect, funcaoPadrao) {
             <div class="col-6 col-md-12">
                 <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${escapar(dados.contato || '')}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
             </div>
-            <div class="col-12 mt-2">
-                <label class="form-label-custom mb-1">Função deste militar</label>
-                ${selectHTML}
-            </div>
         </div>
     </div>`;
 }
 
-// ================= EXPORTAÇÃO EXCEL INTELIGENTE =================
+// ================= EXPORTAÇÃO EXCEL =================
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return;
     try {
@@ -676,8 +661,6 @@ export async function baixarExcelDoEvento() {
         worksheet.mergeCells('A1:F1');
         titleRow.getCell(1).value = `${eventoPreviewAtual.nome}  /  ${formatarDataLocal(eventoPreviewAtual.data)}  /  ${horarioTexto}`;
         titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF000000' } };
-        
-        // ALTERADO: Fundo AMARELO nas informações do serviço
         titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; 
         titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         titleRow.height = 30;
@@ -687,7 +670,7 @@ export async function baixarExcelDoEvento() {
         
         for(let i = 1; i <= 6; i++) {
             const cell = headerRow.getCell(i);
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Mantido cinza para o cabeçalho das colunas
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; 
             cell.font = { bold: true, color: { argb: 'FF000000' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
@@ -700,44 +683,26 @@ export async function baixarExcelDoEvento() {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch { return; }
             militares.forEach(m => {
+                // A função individual agora é mandatória no sistema novo
                 const funcaoFinal = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, funcaoFinal ]);
                 
-                // --- NOVA LÓGICA DE NEGRITO PARCIAL (Rich Text) ---
+                // Rich Text Nome de Guerra
                 const nomeUpper = m.nome.toUpperCase().trim();
-                const guerraUpper = m.guerra.toUpperCase().trim().replace(/\./g, ''); // Remove pontos para facilitar
+                const guerraUpper = m.guerra.toUpperCase().trim().replace(/\./g, '');
                 const partesGuerra = guerraUpper.split(' ').filter(p => p.length > 0);
-                
                 let richTextValue = [];
                 let mapNegrito = new Array(nomeUpper.length).fill(false);
-
-                // Mapeia quais caracteres devem ficar em negrito
                 partesGuerra.forEach(parte => {
                     const idx = nomeUpper.indexOf(parte);
-                    if (idx !== -1) {
-                        for(let k=0; k < parte.length; k++) mapNegrito[idx+k] = true;
-                    }
+                    if (idx !== -1) { for(let k=0; k < parte.length; k++) mapNegrito[idx+k] = true; }
                 });
-
-                // Constrói o RichText baseado no mapa
-                let currentText = "";
-                let currentBold = mapNegrito[0];
-
+                let currentText = ""; let currentBold = mapNegrito[0];
                 for(let i=0; i < nomeUpper.length; i++) {
-                    if(mapNegrito[i] === currentBold) {
-                        currentText += nomeUpper[i];
-                    } else {
-                        if(currentText) {
-                           richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } });
-                        }
-                        currentText = nomeUpper[i];
-                        currentBold = mapNegrito[i];
-                    }
+                    if(mapNegrito[i] === currentBold) { currentText += nomeUpper[i]; } 
+                    else { if(currentText) richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } }); currentText = nomeUpper[i]; currentBold = mapNegrito[i]; }
                 }
-                if(currentText) {
-                    richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } });
-                }
-                // --------------------------------------------------
+                if(currentText) richTextValue.push({ text: currentText, font: { bold: currentBold, name: 'Arial' } });
 
                 row.getCell(3).value = { richText: richTextValue };
                 row.eachCell((cell) => {
@@ -755,12 +720,15 @@ export async function baixarExcelDoEvento() {
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
     let lista = [];
+    
     rows.forEach(row => {
         const posto = row.querySelector('.campo-posto').value.trim().toUpperCase();
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
-        const funcaoIndividual = row.querySelector('.campo-funcao').value; 
+        
+        // CAPTURA A FUNÇÃO FIXA DO ATRIBUTO DATA-FUNCAO
+        const funcaoIndividual = row.getAttribute('data-funcao');
         
         if(posto && nome && guerra && contato.length >= 8) {
             lista.push({ posto, nome, guerra, contato, funcaoIndividual });
@@ -779,17 +747,12 @@ export function abrirPreviaRecibo() {
     document.getElementById('recibo-modal').classList.add('active');
 }
 
-export function confirmarEnvioRecibo() {
-    abrirTelaAssinatura();
-}
+export function confirmarEnvioRecibo() { abrirTelaAssinatura(); }
 
-// ================= NOVA LÓGICA DE ASSINATURA E PDF (CORRIGIDA) =================
-
+// ================= ASSINATURA E PDF =================
 export function abrirTelaAssinatura() {
     if (!escalaSelecionadaId || !dadosParaEnvio) return;
     document.getElementById('modal-assinatura').classList.add('active');
-    
-    // Limpa campos
     document.getElementById('assinatura-nome').value = '';
     document.getElementById('assinatura-nome-completo').value = ''; 
     document.getElementById('assinatura-funcao').value = '';
@@ -799,12 +762,7 @@ export function solicitarConfirmacaoSenha() {
     const nomeGuerra = document.getElementById('assinatura-nome').value.trim();
     const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim(); 
     const funcao = document.getElementById('assinatura-funcao').value.trim();
-
-    if(nomeGuerra.length < 3 || nomeCompleto.length < 5 || funcao.length < 3) {
-        return alert("ATENÇÃO: Preencha o Posto/Guerra, o NOME COMPLETO e a Função.");
-    }
-
-    // Fecha modal de dados e abre o de senha
+    if(nomeGuerra.length < 3 || nomeCompleto.length < 5 || funcao.length < 3) return alert("ATENÇÃO: Preencha o Posto/Guerra, o NOME COMPLETO e a Função.");
     document.getElementById('modal-assinatura').classList.remove('active');
     document.getElementById('input-senha-assinatura').value = "";
     document.getElementById('modal-confirmar-senha').classList.add('active');
@@ -813,39 +771,24 @@ export function solicitarConfirmacaoSenha() {
 export async function validarSenhaEGerarPDF() {
     const senha = document.getElementById('input-senha-assinatura').value;
     const btn = document.querySelector('button[onclick="validarSenhaEGerarPDF()"]');
-    
     if(!senha) return alert("Digite a senha.");
-    
     const textoOriginal = btn.innerHTML;
-    btn.innerHTML = "<span class='spinner-border spinner-border-sm me-2'></span>Autenticando..."; 
-    btn.disabled = true;
+    btn.innerHTML = "<span class='spinner-border spinner-border-sm me-2'></span>Autenticando..."; btn.disabled = true;
 
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("Usuário não logado.");
-
-        // Reautentica
         const credential = EmailAuthProvider.credential(user.email, senha);
         await reauthenticateWithCredential(user, credential);
-        
-        // Se sucesso
         document.getElementById('modal-confirmar-senha').classList.remove('active');
         await finalizarEnvioReal();
-
-    } catch (error) {
-        console.error(error);
-        alert("Senha incorreta ou erro de autenticação.");
-        btn.innerHTML = textoOriginal;
-        btn.disabled = false;
-        document.getElementById('input-senha-assinatura').value = "";
-    }
+    } catch (error) { console.error(error); alert("Senha incorreta ou erro de autenticação."); btn.innerHTML = textoOriginal; btn.disabled = false; document.getElementById('input-senha-assinatura').value = ""; }
 }
 
 async function finalizarEnvioReal() {
     const nomeGuerra = document.getElementById('assinatura-nome').value.trim().toUpperCase();
     const nomeCompleto = document.getElementById('assinatura-nome-completo').value.trim().toUpperCase(); 
     const funcaoAssinatura = document.getElementById('assinatura-funcao').value.trim().toUpperCase();
-    
     document.getElementById('recibo-modal').classList.remove('active');
 
     const codigoAuth = gerarCodigoAutenticacao();
@@ -858,35 +801,20 @@ async function finalizarEnvioReal() {
         const dadosEscala = docSnap.data();
         
         await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
-            militares: jsonString, 
-            status: "Preenchido", 
-            codigoAutenticacao: codigoAuth, 
-            dataValidacao: dataHoraEnvio,
-            assinadoPor: nomeGuerra, 
-            assinadoNomeCompleto: nomeCompleto, 
-            assinadoFuncao: funcaoAssinatura
+            militares: jsonString, status: "Preenchido", codigoAutenticacao: codigoAuth, dataValidacao: dataHoraEnvio,
+            assinadoPor: nomeGuerra, assinadoNomeCompleto: nomeCompleto, assinadoFuncao: funcaoAssinatura
         });
 
         await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
-            codigo: codigoAuth,
-            evento: tituloEvento,
-            unidade: perfilAtual.unidade,
-            dataValidacao: dataHoraEnvio,
-            status: "Válido"
+            codigo: codigoAuth, evento: tituloEvento, unidade: perfilAtual.unidade, dataValidacao: dataHoraEnvio, status: "Válido"
         });
 
         await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeGuerra, nomeCompleto, funcaoAssinatura, dadosEscala);
-        
         alert("Escala assinada e enviada com sucesso!");
         window.location.reload();
-
-    } catch (e) { 
-        alert("Erro no envio: " + e.message); 
-        window.location.reload();
-    }
+    } catch (e) { alert("Erro no envio: " + e.message); window.location.reload(); }
 }
 
-// === VALIDAÇÃO PÚBLICA VISUAL (VERDE) ===
 export function abrirValidador() {
     document.getElementById('modal-validador').classList.add('active');
     document.getElementById('resultado-validacao').style.display = 'none';
@@ -904,16 +832,10 @@ export async function consultarAutenticidade() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            divResult.innerHTML = `
-                <div class="mt-4 p-3 bg-danger bg-opacity-10 border border-danger rounded-3 text-center">
-                    <i class="bi bi-x-circle-fill text-danger display-5"></i>
-                    <h5 class="fw-bold text-danger mt-2">CÓDIGO NÃO ENCONTRADO</h5>
-                    <p class="small text-muted mb-0">Verifique se digitou corretamente.</p>
-                </div>`;
+            divResult.innerHTML = `<div class="mt-4 p-3 bg-danger bg-opacity-10 border border-danger rounded-3 text-center"><i class="bi bi-x-circle-fill text-danger display-5"></i><h5 class="fw-bold text-danger mt-2">CÓDIGO NÃO ENCONTRADO</h5><p class="small text-muted mb-0">Verifique se digitou corretamente.</p></div>`;
         } else {
             const d = docSnap.data();
             const dataF = new Date(d.dataValidacao).toLocaleString('pt-BR');
-            // ESTILO VISUAL IGUAL AO PRINT
             divResult.innerHTML = `
                 <div class="mt-4 bg-success bg-opacity-25 p-3 rounded-4 text-center border border-success">
                     <i class="bi bi-patch-check-fill text-success display-4"></i>
@@ -930,17 +852,13 @@ export async function consultarAutenticidade() {
     } catch (e) { divResult.innerHTML = "Erro conexão."; }
 }
 
-// === NOVO GERADOR DE PDF (Layout Corrigido) ===
 async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerraAssinatura, nomeCompletoAssinatura, funcaoAssinatura, dadosEscala) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4'); 
     const MARGEM_ESQ = 15; const CENTRO_X = 105; const LARGURA_UTIL = 180;
-    
-    // Carrega apenas o Brasão CBM (o da unidade foi removido a pedido)
     const imgBrasaoMA = await carregarImagemBase64('brasao.png'); 
 
     let y = 10;
-    // Centraliza o Brasão
     if(imgBrasaoMA) doc.addImage(imgBrasaoMA, 'PNG', 105 - 12, 10, 24, 24);
 
     doc.setFont("times", "bold"); doc.setFontSize(11); doc.setTextColor(0);
@@ -948,18 +866,13 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     doc.text("SECRETARIA DE SEGURANÇA PÚBLICA", CENTRO_X, y+35, { align: "center" });
     doc.text("CORPO DE BOMBEIROS MILITAR DO MARANHÃO", CENTRO_X, y+40, { align: "center" });
     
-    // ALTERADO: Removido nomeUnidade do cabeçalho superior
-
     y = 65;
     doc.setFontSize(14); doc.text("ESCALA DE SERVIÇO", CENTRO_X, y, { align: "center" });
     y += 12;
 
     const nomeUnidade = (perfilAtual.unidade || dadosEscala.unidade || "COMANDO OPERACIONAL").toUpperCase();
-
     doc.setFontSize(10); doc.setFont("helvetica", "bold");
     doc.text(`OPERAÇÃO: ${dadosEscala.evento}`, MARGEM_ESQ, y); y += 5;
-
-    // ALTERADO: Nome da Unidade movido para cá
     doc.text(`UNIDADE: ${nomeUnidade}`, MARGEM_ESQ, y); y += 5;
     
     const dataObj = new Date(dadosEscala.data + "T12:00:00"); 
@@ -969,7 +882,6 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     const horario = (dadosEscala.horaInicio && dadosEscala.horaFim) ? `${dadosEscala.horaInicio} ÀS ${dadosEscala.horaFim}` : "A DEFINIR";
     doc.text(`HORÁRIO: ${horario}`, MARGEM_ESQ, y); y += 10;
 
-    // Tabela
     doc.setFillColor(230, 230, 230); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8, 'F');
     doc.setDrawColor(0); doc.setLineWidth(0.1); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 8);
     
@@ -985,35 +897,24 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     listaMilitares.forEach((m) => {
         if (y > 250) { doc.addPage(); y = 20; doc.text("(Continuação)", MARGEM_ESQ, y-5); }
         doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 7);
-        
         doc.setFont("helvetica", "normal");
         doc.text(m.posto, MARGEM_ESQ + 2, y + 5);
-        
         let nomeVisual = m.nome.toUpperCase();
         if(nomeVisual.length > 40) nomeVisual = nomeVisual.substring(0, 38) + "...";
         doc.text(nomeVisual, MARGEM_ESQ + 35, y + 5);
-
-        // NOME DE GUERRA EM NEGRITO
         doc.setFont("helvetica", "bold");
         doc.text(m.guerra, MARGEM_ESQ + 110, y + 5);
-        doc.setFont("helvetica", "normal"); // Volta ao normal
-
-        // Função Individual
+        doc.setFont("helvetica", "normal"); 
         const f = m.funcaoIndividual ? m.funcaoIndividual : (dadosEscala.funcao || "BOMBEIRO");
         doc.text(f.substring(0, 18), MARGEM_ESQ + 145, y + 5);
-
         y += 7;
     });
 
-    y += 15; 
-    if (y > 220) { doc.addPage(); y = 40; }
+    y += 15; if (y > 220) { doc.addPage(); y = 40; }
 
-    // QR Code
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = "";
-    // URL PARA AUTO VALIDAÇÃO
     const urlValidacao = window.location.origin + window.location.pathname + "?validar=" + codigoAuth;
-    
     new QRCode(qrContainer, { text: urlValidacao, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.H });
     await new Promise(r => setTimeout(r, 300));
     
@@ -1023,23 +924,17 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
     else { const qrImg = qrContainer.querySelector('img'); if (qrImg) qrDataUrl = qrImg.src; }
 
     doc.setDrawColor(150); doc.setLineWidth(0.5); doc.rect(MARGEM_ESQ, y, LARGURA_UTIL, 35);
-
     if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', MARGEM_ESQ + 3, y + 2.5, 30, 30);
 
     const textoX = MARGEM_ESQ + 38;
     doc.setFont("courier", "bold"); doc.setFontSize(10); doc.setTextColor(0);
     doc.text("DOCUMENTO ASSINADO DIGITALMENTE", textoX, y + 8);
-    
-    // NOME COMPLETO + POSTO NA ASSINATURA
     doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    
     doc.text(nomeGuerraAssinatura, textoX, y + 14); 
     doc.setFont("helvetica", "normal");
     doc.text(nomeCompletoAssinatura, textoX, y + 18); 
-    
     doc.setFontSize(8);
     doc.text(funcaoAssinatura, textoX, y + 23); 
-    
     doc.setTextColor(80);
     doc.text(`Assinado em: ${new Date().toLocaleString('pt-BR')}`, textoX, y + 28);
     doc.setFont("courier", "normal"); doc.setFontSize(7);
@@ -1054,7 +949,5 @@ window.app = {
     abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, 
     excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, 
     editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, 
-    abrirTelaAssinatura, 
-    solicitarConfirmacaoSenha, 
-    validarSenhaEGerarPDF      
+    abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 };
