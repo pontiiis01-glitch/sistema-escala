@@ -31,7 +31,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ANIMAÇÕES */
         .animate-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -41,25 +40,27 @@
         /* HEADER */
         .header-tactical {
             background: linear-gradient(180deg, #000000 0%, var(--cbm-red) 140%);
-            padding: 4rem 1rem 6rem 1rem; 
+            padding: 2rem 1rem 6rem 1rem; /* Padding ajustado */
             position: relative; z-index: 0;
             text-align: center;
             border-bottom: 4px solid var(--cbm-gold);
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
         
+        /* BRASÃO CORRIGIDO */
         .brasao-central {
-            width: 140px; height: 140px; object-fit: contain;
+            width: 130px; 
+            height: 130px; 
+            object-fit: contain;
             filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
-            margin-bottom: 1rem;
             display: block;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 0 auto 1rem auto;
             background-color: transparent;
+            border-radius: 50%; /* Opcional, se a imagem for quadrada ajuda a arredondar */
         }
         
         .system-title {
-            color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 2.0rem;
+            color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; font-size: 1.8rem;
             text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 0.5rem;
         }
 
@@ -126,7 +127,7 @@
 <body>
     <header class="header-tactical">
         <div class="container d-flex flex-column align-items-center animate-up">
-            <img src="brasao_unidade.jpg" class="brasao-central" alt="Brasão Unidade" onerror="this.style.display='none';"> 
+            <img src="brasao_unidade.jpg" class="brasao-central" alt="Brasão Unidade" onerror="this.src='brasao.png';"> 
             <h1 class="system-title">Comando Operacional Metropolitano</h1>
             <p class="text-white-50 fw-bold small text-uppercase" style="font-size: 1.0rem;">Sistema Integrado de Escalas em Grandes Eventos</p>
         </div>
@@ -281,20 +282,27 @@
     </main>
 
     <div id="modal-editar-admin" class="modal-overlay-custom">
-        <div class="modal-content-custom p-4" style="max-width: 500px; height: auto;">
-             <div class="text-center mb-3"><h5 class="fw-black text-uppercase">Gerenciar Solicitação</h5></div>
-            <p class="text-center text-muted">Devido à complexidade de múltiplas funções, exclua e crie novamente se precisar alterar cotas.</p>
+        <div class="modal-content-custom" style="max-width: 600px; height: auto;">
+            <div class="p-3 border-bottom text-center bg-light">
+                 <h5 class="fw-black text-uppercase m-0">Editar Solicitação</h5>
+                 <p class="text-muted small m-0" id="edit-admin-subtitle">...</p>
+            </div>
             
-            <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-4">
-                <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
-                <div class="row g-2">
-                    <div class="col-7"><input type="date" id="edit-admin-prazo-data" class="form-control border-0 fw-bold"></div>
-                    <div class="col-5"><input type="time" id="edit-admin-prazo-hora" class="form-control border-0 fw-bold"></div>
+            <div class="p-4" style="max-height: 60vh; overflow-y: auto;">
+                <div id="container-editar-cotas"></div>
+                
+                <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mt-4">
+                    <label class="form-label-custom text-dark fw-bold">Prorrogar Prazo</label>
+                    <div class="row g-2">
+                        <div class="col-7"><input type="date" id="edit-admin-prazo-data" class="form-control border-0 fw-bold"></div>
+                        <div class="col-5"><input type="time" id="edit-admin-prazo-hora" class="form-control border-0 fw-bold"></div>
+                    </div>
                 </div>
             </div>
-            <div class="d-flex gap-2">
+
+            <div class="p-3 border-top d-flex gap-2">
                 <button onclick="fecharModal('modal-editar-admin')" class="btn btn-light w-50 fw-bold rounded-3 ios-click">Cancelar</button>
-                <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3 ios-click">Salvar</button>
+                <button onclick="salvarEdicaoAdmin()" class="btn btn-success w-50 fw-bold rounded-3 ios-click">Salvar Alterações</button>
             </div>
         </div>
     </div>
@@ -311,7 +319,7 @@
             </div>
             <div id="container-inputs-militares" class="p-4 flex-grow-1 overflow-auto bg-light"></div>
             <div class="p-3 border-top bg-white">
-                <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click fs-5 text-uppercase shadow-sm"><i class="bi bi-check-lg me-2"></i> Conferir</button>
+                <button onclick="abrirPreviaRecibo()" class="btn btn-success w-100 py-3 fw-bold rounded-4 ios-click fs-5 text-uppercase shadow-sm"><i class="bi bi-check-lg me-2"></i> Conferir e Enviar</button>
             </div>
         </div>
     </div>
@@ -439,7 +447,7 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=9"></script>
+    <script type="module" src="app.js?v=10"></script>
     
     <script>
         window.toggleSenha = (idInput, iconElement) => {

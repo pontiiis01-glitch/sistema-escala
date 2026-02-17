@@ -24,6 +24,7 @@ let eventoPreviewAtual = null;
 let listaOrdensTemporaria = [];
 let dadosParaEnvio = null;
 let idEdicaoAdmin = null; 
+let demandasEdicaoCache = []; // Para armazenar temporariamente as demandas na edição
 
 // === UTILITÁRIOS & SEGURANÇA ===
 
@@ -219,7 +220,6 @@ export function adicionarOrdem() {
     if (!unidade) return alert("Selecione uma unidade!");
     if (sup==0 && int==0 && sub==0 && esp==0 && pra==0) return alert("Defina a quantidade de militares.");
 
-    // Lógica de Agrupamento: Verifica se já existe a unidade na lista
     const itemExistente = listaOrdensTemporaria.find(item => item.unidade === unidade);
 
     const novaDemanda = {
@@ -228,18 +228,14 @@ export function adicionarOrdem() {
     };
 
     if (itemExistente) {
-        // Se já existe, adiciona a nova função ao array de demandas dessa unidade
-        // Verifica se essa função já não foi adicionada para evitar duplicidade exata
         const funcRepetida = itemExistente.demandas.some(d => d.funcao === funcao);
         if(funcRepetida) return alert(`A função ${funcao} já foi adicionada para a unidade ${unidade}.`);
-        
         itemExistente.demandas.push(novaDemanda);
     } else {
-        // Se não existe, cria novo registro
         listaOrdensTemporaria.push({ 
             id: Date.now(), 
             unidade, 
-            demandas: [novaDemanda] // Array de demandas
+            demandas: [novaDemanda] 
         });
     }
     
@@ -254,7 +250,6 @@ function atualizarTabelaOrdens() {
     corpo.innerHTML = "";
     
     listaOrdensTemporaria.forEach((item, index) => {
-        // Mostra resumo de TODAS as demandas da unidade
         let resumoHTML = "";
         item.demandas.forEach(d => {
             const c = d.cota;
@@ -304,8 +299,8 @@ export async function dispararSolicitacao() {
                 prazoData, 
                 prazoHora: prazoHora || "23:59",
                 unidade: ordem.unidade, 
-                funcao: "MULTIPLAS", // Marcador para sistema saber que é array
-                demandas: ordem.demandas, // AQUI FICA O ARRAY COM AS COTAS
+                funcao: "MULTIPLAS",
+                demandas: ordem.demandas, 
                 status: "Pendente", 
                 militares: "[]", 
                 criadoEm: new Date()
@@ -363,7 +358,7 @@ async function carregarEventosAdmin() {
     } catch(e) { console.error(e); }
 }
 
-// ================= ADMIN PREVIEW =================
+// ================= ADMIN PREVIEW & EDICAO DINAMICA =================
 export async function abrirPreview(nomeEvento, dataEvento) {
     eventoPreviewAtual = { nome: nomeEvento, data: dataEvento };
     document.getElementById('preview-modal').classList.add('active'); 
@@ -381,9 +376,11 @@ export async function abrirPreview(nomeEvento, dataEvento) {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch(e) { militares = []; }
             
-            // Lógica para mostrar resumo de cotas quando é Multiplas
             let textoCota = "";
+            let jsonDemandas = "[]";
+
             if(d.demandas) {
+                jsonDemandas = JSON.stringify(d.demandas).replace(/"/g, "&quot;");
                 d.demandas.forEach(dem => {
                    const c = dem.cota;
                    let parts = [];
@@ -395,8 +392,8 @@ export async function abrirPreview(nomeEvento, dataEvento) {
                  textoCota = "Legado (Ver Detalhes)";
             }
             
-            // Botões simplificados
-            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '', '{}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Prorrogar"><i class="bi bi-clock-history"></i></button>`;
+            // Botão EDITAR chama a nova função que suporta cotas dinamicas
+            const btnEdit = `<button onclick="window.app.editarSolicitacaoAdmin('${idDoc}', '${escapar(d.unidade)}', '${jsonDemandas}', '${d.prazoData}', '${d.prazoHora}')" class="btn btn-sm btn-outline-primary border-0 me-1" title="Editar Cotas"><i class="bi bi-pencil-square"></i></button>`;
             const btnDelete = `<button onclick="window.app.excluirEscalaIndividual('${idDoc}', '${escapar(d.unidade)}')" class="btn btn-sm btn-outline-danger border-0" title="Excluir"><i class="bi bi-trash-fill"></i></button>`;
 
             if(d.status === "Pendente") {
@@ -428,8 +425,38 @@ export async function abrirPreview(nomeEvento, dataEvento) {
     } catch(e) { console.error(e); corpo.innerHTML = "<tr><td colspan='6'>Erro ao carregar ou Sem Permissão.</td></tr>"; }
 }
 
-export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHora) {
+export function editarSolicitacaoAdmin(id, unidade, jsonDemandas, pData, pHora) {
     idEdicaoAdmin = id;
+    let demandas = [];
+    try { demandas = JSON.parse(jsonDemandas); } catch(e) {}
+    
+    // Se for legado (sem demandas), converte pra estrutura nova na visualizacao
+    if(!demandas || demandas.length === 0) demandas = [];
+
+    demandasEdicaoCache = demandas; // Salva para uso no salvamento
+
+    document.getElementById('edit-admin-subtitle').innerText = `${unidade}`;
+    
+    // GERA INPUTS DINAMICOS
+    const container = document.getElementById('container-editar-cotas');
+    container.innerHTML = "";
+    
+    demandas.forEach((dem, index) => {
+        const c = dem.cota;
+        container.innerHTML += `
+            <div class="card p-3 mb-2 shadow-sm border">
+                <h6 class="fw-bold text-danger text-uppercase mb-2">${dem.funcao}</h6>
+                <div class="cota-grid">
+                     <div><label class="form-label-custom text-center">Sup</label><input type="number" class="form-control text-center fw-bold px-1 input-cota-edit" data-index="${index}" data-tipo="superior" value="${c.superior||0}"></div>
+                     <div><label class="form-label-custom text-center">Int</label><input type="number" class="form-control text-center fw-bold px-1 input-cota-edit" data-index="${index}" data-tipo="intermediario" value="${c.intermediario||0}"></div>
+                     <div><label class="form-label-custom text-center">Sub</label><input type="number" class="form-control text-center fw-bold px-1 input-cota-edit" data-index="${index}" data-tipo="subalterno" value="${c.subalterno||0}"></div>
+                     <div style="grid-column: span 1.5;"><label class="form-label-custom text-center">Esp</label><input type="number" class="form-control text-center fw-bold px-1 input-cota-edit" data-index="${index}" data-tipo="especial" value="${c.especial||0}"></div>
+                     <div style="grid-column: span 1.5;"><label class="form-label-custom text-center">Pç</label><input type="number" class="form-control text-center fw-bold px-1 input-cota-edit" data-index="${index}" data-tipo="praca" value="${c.praca||0}"></div>
+                </div>
+            </div>
+        `;
+    });
+
     document.getElementById('edit-admin-prazo-data').value = pData || '';
     document.getElementById('edit-admin-prazo-hora').value = pHora || '23:59';
     document.getElementById('modal-editar-admin').classList.add('active');
@@ -437,15 +464,27 @@ export function editarSolicitacaoAdmin(id, unidade, funcao, jsonCota, pData, pHo
 
 export async function salvarEdicaoAdmin() {
     if(!idEdicaoAdmin) return;
+    
+    // Lê os inputs dinâmicos
+    const inputs = document.querySelectorAll('.input-cota-edit');
+    inputs.forEach(input => {
+        const index = input.getAttribute('data-index');
+        const tipo = input.getAttribute('data-tipo');
+        if(demandasEdicaoCache[index] && demandasEdicaoCache[index].cota) {
+            demandasEdicaoCache[index].cota[tipo] = input.value;
+        }
+    });
+
     const novoPrazoData = document.getElementById('edit-admin-prazo-data').value;
     const novoPrazoHora = document.getElementById('edit-admin-prazo-hora').value;
 
     try {
         await updateDoc(doc(db, "escalas", idEdicaoAdmin), {
+            demandas: demandasEdicaoCache,
             prazoData: novoPrazoData,
             prazoHora: novoPrazoHora
         });
-        alert("Prazo atualizado!");
+        alert("Cotas e Prazo atualizados!");
         document.getElementById('modal-editar-admin').classList.remove('active');
         abrirPreview(eventoPreviewAtual.nome, eventoPreviewAtual.data);
     } catch(e) { alert("Erro ao salvar: " + e.message); }
@@ -512,7 +551,6 @@ async function carregarPendenciasUnidade() {
 }
 
 function gerarCardMissao(d, isPendente) {
-    // Calcula totais somando todas as demandas
     let totalVagas = 0;
     if(d.demandas) {
         d.demandas.forEach(dem => {
@@ -584,20 +622,17 @@ export async function abrirEdicao(id) {
     
     let contadorGeral = 0;
 
-    // Se for formato novo (demandas array)
     if (d.demandas) {
         d.demandas.forEach(demanda => {
             const c = demanda.cota;
             const nomeFuncao = demanda.funcao;
             
-            // Cabeçalho da Seção
             container.innerHTML += `<div class="w-100 text-center bg-dark text-white p-2 rounded fw-bold mt-3 mb-2 text-uppercase">${nomeFuncao}</div>`;
             
             const gerarLoop = (qtd, rotulo) => {
                 const num = parseInt(qtd) || 0;
                 for(let i=0; i < num; i++) {
                     const dadosMilitar = dadosSalvos[contadorGeral++] || {};
-                    // Passamos o nome da função para ser embutido no HTML
                     container.innerHTML += gerarHtmlMilitar(i, rotulo, dadosMilitar, nomeFuncao);
                 }
             };
@@ -610,33 +645,36 @@ export async function abrirEdicao(id) {
             if(c.praca) gerarLoop(c.praca, 'PRAÇA');
         });
     } 
-    // Suporte Legado (caso exista algum antigo)
     else {
         const c = d.cota || {};
         container.innerHTML += `<div class="w-100 text-center bg-dark text-white p-2 rounded fw-bold mt-3 mb-2 text-uppercase">${d.funcao}</div>`;
-         // ... (lógica antiga omitida para brevidade, mas o sistema novo só gera novos)
+        // lógica legado simplificada...
     }
 
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-// ALTERADO: Campo hidden para armazenar a função fixa deste bloco
+// ALTERADO: PLACEHOLDERS MAIS CLAROS E EXEMPLOS
 function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
+    let exPosto = "POSTO";
+    if(tipo.includes("PRAÇA")) exPosto = "EX: 3º SGT / CB / SD";
+    if(tipo.includes("OFICIAL") || tipo.includes("SUPERIOR")) exPosto = "EX: MAJ / CAP / TEN";
+
     return `
     <div class="p-3 bg-white rounded-3 border mb-3 militar-row shadow-sm" data-funcao="${funcaoFixa}">
         <span class="badge bg-secondary mb-2">${tipo} ${index + 1}</span>
         <div class="row g-2">
             <div class="col-4 col-md-3">
-                <input type="text" class="form-control campo-posto fw-bold" placeholder="Posto" value="${escapar(dados.posto || '')}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-posto fw-bold" placeholder="${exPosto}" value="${escapar(dados.posto || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-8 col-md-5">
-                <input type="text" class="form-control campo-nome" placeholder="Nome Completo" value="${escapar(dados.nome || '')}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-nome" placeholder="NOME COMPLETO" value="${escapar(dados.nome || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-6 col-md-4">
-                <input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="Nome Guerra" value="${escapar(dados.guerra || '')}" oninput="this.value = this.value.toUpperCase()">
+                <input type="text" class="form-control campo-guerra fw-bold text-uppercase" placeholder="NOME DE GUERRA" value="${escapar(dados.guerra || '')}" oninput="this.value = this.value.toUpperCase()">
             </div>
             <div class="col-6 col-md-12">
-                <input type="text" class="form-control campo-tel" placeholder="98 9XXXX-XXXX" value="${escapar(dados.contato || '')}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
+                <input type="text" class="form-control campo-tel" placeholder="TEL: 98 9XXXX-XXXX" value="${escapar(dados.contato || '')}" maxlength="15" oninput="window.formatarTelefoneInput(this)">
             </div>
         </div>
     </div>`;
@@ -683,11 +721,9 @@ export async function baixarExcelDoEvento() {
             let militares = [];
             try { militares = JSON.parse(d.militares); } catch { return; }
             militares.forEach(m => {
-                // A função individual agora é mandatória no sistema novo
                 const funcaoFinal = m.funcaoIndividual ? m.funcaoIndividual : d.funcao;
                 const row = worksheet.addRow([ contador++, m.posto, '', m.contato, d.unidade, funcaoFinal ]);
                 
-                // Rich Text Nome de Guerra
                 const nomeUpper = m.nome.toUpperCase().trim();
                 const guerraUpper = m.guerra.toUpperCase().trim().replace(/\./g, '');
                 const partesGuerra = guerraUpper.split(' ').filter(p => p.length > 0);
@@ -726,17 +762,18 @@ export function abrirPreviaRecibo() {
         const nome = row.querySelector('.campo-nome').value.trim().toUpperCase();
         const guerra = row.querySelector('.campo-guerra').value.trim().toUpperCase();
         const contato = row.querySelector('.campo-tel').value.trim(); 
-        
-        // CAPTURA A FUNÇÃO FIXA DO ATRIBUTO DATA-FUNCAO
         const funcaoIndividual = row.getAttribute('data-funcao');
         
+        // ENVIO PARCIAL: Só adiciona se tiver dados. Se estiver vazio, ignora.
         if(posto && nome && guerra && contato.length >= 8) {
             lista.push({ posto, nome, guerra, contato, funcaoIndividual });
         }
     });
 
-    if(lista.length === 0) return alert("Preencha os dados dos militares. O telefone é obrigatório.");
-    if(lista.length < rows.length) return alert("Atenção: Algum militar não foi adicionado pois o telefone ou nome estava incompleto.");
+    // Se a lista estiver vazia, aí sim bloqueia
+    if(lista.length === 0) return alert("Preencha pelo menos um militar.");
+    
+    // REMOVIDA A TRAVA DE QUANTIDADE (lista.length < rows.length)
 
     dadosParaEnvio = lista;
     document.getElementById('recibo-evento').innerText = document.getElementById('titulo-evento-form').innerText;
