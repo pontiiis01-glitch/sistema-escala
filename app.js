@@ -1088,11 +1088,16 @@ window.app = {
     excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, 
     editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, 
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
+// Restaura o botão ao normal
+    btn.innerHTML = textoOriginal;
+    btn.disabled = false;
+}
 
+window.app = { 
+    fazerLogin, fazerCadastro, sair, 
+    adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, 
+    abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, 
+    excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, 
+    editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, 
+    abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 };
-
-
-
-
-
-
