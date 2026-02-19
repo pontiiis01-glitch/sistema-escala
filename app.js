@@ -655,7 +655,7 @@ export async function abrirEdicao(id) {
 
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
-// ALTERADO: Adicionados exemplos específicos por quadro/patente
+
 function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
     let exPosto = "POSTO/GRAD";
     let subTexto = "";
@@ -702,6 +702,7 @@ function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
         </div>
     </div>`;
 }
+
 // ================= ENVIO INTELIGENTE (DIVISÃO DE PENDÊNCIAS) =================
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
@@ -865,11 +866,6 @@ async function finalizarEnvioReal() {
 
     } catch (e) { alert("Erro no envio: " + e.message); window.location.reload(); }
 }
-        
-        window.location.reload();
-
-    } catch (e) { alert("Erro no envio: " + e.message); window.location.reload(); }
-}
 
 export function abrirValidador() {
     document.getElementById('modal-validador').classList.add('active');
@@ -1000,6 +996,7 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
 
     doc.save(`ESCALA_${dadosEscala.unidade}_${dadosEscala.evento}.pdf`);
 }
+
 // ================= EXPORTAÇÃO PARA EXCEL =================
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return alert("Nenhum evento selecionado.");
@@ -1078,17 +1075,6 @@ export async function baixarExcelDoEvento() {
     }
     
     // Restaura o botão ao normal
-    btn.innerHTML = textoOriginal;
-    btn.disabled = false;
-}
-window.app = { 
-    fazerLogin, fazerCadastro, sair, 
-    adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, 
-    abrirPreviaRecibo, confirmarEnvioRecibo, abrirPreview, baixarExcelDoEvento, 
-    excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, 
-    editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, 
-    abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
-// Restaura o botão ao normal
     btn.innerHTML = textoOriginal;
     btn.disabled = false;
 }
