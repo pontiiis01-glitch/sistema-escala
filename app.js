@@ -998,83 +998,171 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
 }
 
 // ================= EXPORTAÇÃO PARA EXCEL =================
+// ================= EXPORTAÇÃO PARA EXCEL (COM HIERARQUIA E CORES) =================
 export async function baixarExcelDoEvento() {
     if (!eventoPreviewAtual) return alert("Nenhum evento selecionado.");
     
-    // Pega o botão e coloca ele em estado de "Carregando"
+    // Coloca o botão em "Carregando"
     const btn = document.querySelector('button[onclick="baixarExcelDoEvento()"]');
     const textoOriginal = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gerando Planilha...';
     btn.disabled = true;
 
     try {
-        // Busca os dados do evento atual no banco de dados
         const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
         const snapshot = await getDocs(q);
         
-        // Cria a planilha virtual
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Escala');
-        
-        // Define as colunas do Excel
-        sheet.columns = [
-            { header: 'ORDEM', key: 'ordem', width: 10 },
-            { header: 'POSTO/GRAD', key: 'posto', width: 15 },
-            { header: 'NOME DE GUERRA', key: 'guerra', width: 25 },
-            { header: 'NOME COMPLETO', key: 'nome', width: 40 },
-            { header: 'CONTATO', key: 'contato', width: 20 },
-            { header: 'UNIDADE', key: 'unidade', width: 15 },
-            { header: 'FUNÇÃO', key: 'funcao', width: 25 }
-        ];
-        
-        // Estiliza o cabeçalho (Fundo vermelho padrão CBM e letras brancas)
-        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB30000' } }; 
-        sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        let todosMilitares = [];
+        let horarioEvento = "A DEFINIR";
 
-        let contador = 1;
-        
-        // Percorre as escalas para encontrar quem já preencheu
+        // Coleta todos os militares e pega o horário da missão
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
+            if(d.horaInicio) horarioEvento = `${d.horaInicio} às ${d.horaFim || '??:??'}`;
+
             if (d.status !== "Pendente" && d.militares) {
-                let militares = [];
-                try { militares = JSON.parse(d.militares); } catch(e) {}
+                let militaresArray = [];
+                try { militaresArray = JSON.parse(d.militares); } catch(e) {}
                 
-                // Adiciona cada militar em uma linha da planilha
-                militares.forEach(m => {
-                    sheet.addRow({
-                        ordem: contador++,
-                        posto: m.posto,
-                        guerra: m.guerra,
-                        nome: m.nome,
-                        contato: m.contato,
-                        unidade: d.unidade,
+                militaresArray.forEach(m => {
+                    todosMilitares.push({
+                        posto: m.posto || "",
+                        guerra: m.guerra || "",
+                        nome: m.nome || "",
+                        contato: m.contato || "",
+                        unidade: d.unidade || "",
                         funcao: m.funcaoIndividual || d.funcao || "BOMBEIRO"
                     });
                 });
             }
         });
 
-        // Se ninguém tiver respondido ainda
-        if (contador === 1) {
+        if (todosMilitares.length === 0) {
             alert("Não há militares confirmados nesta missão para gerar o Excel.");
-            btn.innerHTML = textoOriginal;
-            btn.disabled = false;
+            btn.innerHTML = textoOriginal; btn.disabled = false;
             return;
         }
 
-        // Gera e baixa o arquivo final no computador/celular
+        // ================= FUNÇÃO DE ORDENAÇÃO POR HIERARQUIA =================
+        const getPesoHierarquia = (posto) => {
+            const p = String(posto).toUpperCase().replace(/[º°]/g, '').trim();
+            if (p.includes('TEN CEL') || p.includes('TC')) return 2;
+            if (p.includes('CEL')) return 1;
+            if (p.includes('MAJ')) return 3;
+            if (p.includes('CAP')) return 4;
+            if (p.includes('1 TEN') || p.includes('1TEN')) return 5;
+            if (p.includes('2 TEN') || p.includes('2TEN')) return 6;
+            if (p.includes('TEN')) return 6.5; // Caso genérico
+            if (p.includes('ASP')) return 7;
+            if (p.includes('CAD') || p.includes('AL')) return 8;
+            if (p.includes('ST') || p.includes('SUB')) return 9;
+            if (p.includes('1 SGT') || p.includes('1SGT')) return 10;
+            if (p.includes('2 SGT') || p.includes('2SGT')) return 11;
+            if (p.includes('3 SGT') || p.includes('3SGT')) return 12;
+            if (p.includes('SGT')) return 12.5; // Caso genérico
+            if (p.includes('CB') || p.includes('CABO')) return 13;
+            if (p.includes('SD') || p.includes('SOLDADO')) return 14;
+            return 99; // Se não for nada disso, joga pro final da lista
+        };
+
+        // Aplica a ordem de antiguidade na lista
+        todosMilitares.sort((a, b) => getPesoHierarquia(a.posto) - getPesoHierarquia(b.posto));
+
+        // ================= CRIAÇÃO DO EXCEL =================
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Escala');
+
+        // Define a largura exata de cada coluna para ficar igual ao seu print
+        sheet.columns = [
+            { key: 'ordem', width: 6 },
+            { key: 'posto', width: 16 },
+            { key: 'nome', width: 55 },
+            { key: 'contato', width: 18 },
+            { key: 'unidade', width: 12 },
+            { key: 'funcao', width: 18 }
+        ];
+
+        // --- LINHA 1: TÍTULO GERAL AZUL ---
+        const [ano, mes, dia] = eventoPreviewAtual.data.split('-');
+        const dataObj = new Date(ano, mes - 1, dia);
+        const diasSemana = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+        const diaSemanaStr = diasSemana[dataObj.getDay()];
+        
+        const tituloFinal = `${diaSemanaStr} - ${dia}/${mes} - ${eventoPreviewAtual.nome} - ${horarioEvento}`.toUpperCase();
+
+        sheet.mergeCells('A1:F1');
+        const titleCell = sheet.getCell('A1');
+        titleCell.value = tituloFinal;
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9BC2E6' } }; // Azul claro
+        titleCell.font = { bold: true, size: 12, color: { argb: 'FF000000' } };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        titleCell.border = { top: {style:'medium'}, left: {style:'medium'}, bottom: {style:'medium'}, right: {style:'medium'} };
+
+        // --- LINHA 2: TÍTULOS DAS COLUNAS (CINZA) ---
+        const row2 = sheet.addRow(['Ord.', 'POSTO/GRAD.', 'NOME', 'CONTATO', 'UBM', 'FUNÇÃO']);
+        row2.height = 20;
+        row2.eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } }; // Cinza claro
+            cell.font = { bold: true };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        });
+
+        // --- PREENCHENDO OS MILITARES ---
+        todosMilitares.forEach((m, index) => {
+            const row = sheet.addRow({
+                ordem: index + 1,
+                posto: m.posto.toUpperCase(),
+                nome: "", // Preenchido embaixo com negrito parcial
+                contato: m.contato,
+                unidade: m.unidade.toUpperCase(),
+                funcao: m.funcao.toUpperCase()
+            });
+
+            // Lógica para deixar só o "Nome de Guerra" em negrito
+            let nomeCompleto = m.nome.toUpperCase().trim();
+            let guerra = m.guerra.toUpperCase().trim();
+            let richTextArr = [];
+            
+            if (nomeCompleto && guerra && nomeCompleto.includes(guerra)) {
+                let indice = nomeCompleto.indexOf(guerra);
+                let parte1 = nomeCompleto.substring(0, indice);
+                let parte2 = nomeCompleto.substring(indice + guerra.length);
+                
+                if(parte1) richTextArr.push({ font: { bold: false }, text: parte1 });
+                richTextArr.push({ font: { bold: true }, text: guerra });
+                if(parte2) richTextArr.push({ font: { bold: false }, text: parte2 });
+            } else {
+                richTextArr.push({ font: { bold: false }, text: nomeCompleto ? (nomeCompleto + " ") : "" });
+                richTextArr.push({ font: { bold: true }, text: guerra });
+            }
+
+            const cellNome = row.getCell(3);
+            cellNome.value = { richText: richTextArr };
+
+            // Bordas e alinhamentos de cada célula
+            row.eachCell((cell, colNumber) => {
+                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                // A coluna do Nome (3) fica alinhada à esquerda
+                if (colNumber === 3) cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                // A coluna da Função (6) ganha fundo amarelo
+                if (colNumber === 6) {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; 
+                }
+            });
+        });
+
+        // DOWNLOAD
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         saveAs(blob, `ESCALA_${eventoPreviewAtual.nome.replace(/\s+/g, '_')}.xlsx`);
-        
+
     } catch (error) {
         console.error("Erro ao gerar Excel:", error);
         alert("Erro ao gerar o arquivo Excel. Verifique a conexão.");
     }
-    
-    // Restaura o botão ao normal
+
     btn.innerHTML = textoOriginal;
     btn.disabled = false;
 }
@@ -1086,4 +1174,5 @@ window.app = {
     excluirEscalaIndividual, abrirEdicao, excluirEventoCompleto, 
     editarSolicitacaoAdmin, salvarEdicaoAdmin, abrirValidador, consultarAutenticidade, 
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
+
 };
