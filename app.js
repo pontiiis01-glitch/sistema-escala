@@ -606,7 +606,7 @@ export async function abrirEdicao(id) {
     const d = docSnap.data();
     
     document.getElementById('titulo-evento-form').innerText = d.evento;
-    document.getElementById('subtitulo-form').innerText = "Preencha conforme as funções abaixo";
+    document.getElementById('subtitulo-form').innerText = d.status === "Preenchido" ? "Edição de Militares" : "Preencha conforme as funções abaixo";
     
     const container = document.getElementById('container-inputs-militares');
     container.innerHTML = "";
@@ -616,7 +616,20 @@ export async function abrirEdicao(id) {
     
     let contadorGeral = 0;
 
-    if (d.demandas) {
+    if (d.status === "Preenchido") {
+        // MODO EDIÇÃO: Mostra apenas os militares que já foram enviados, sem gerar novas caixas em branco
+        if(dadosSalvos.length === 0) container.innerHTML = "<p class='text-center text-muted'>Nenhum militar registrado.</p>";
+        
+        const funcoes = [...new Set(dadosSalvos.map(m => m.funcaoIndividual))];
+        funcoes.forEach(func => {
+            container.innerHTML += `<div class="w-100 text-center bg-dark text-white p-2 rounded fw-bold mt-3 mb-2 text-uppercase">${func}</div>`;
+            const mils = dadosSalvos.filter(m => m.funcaoIndividual === func);
+            mils.forEach((m, i) => {
+                container.innerHTML += gerarHtmlMilitar(i, 'MILITAR ENVIADO', m, func);
+            });
+        });
+    } else if (d.demandas) {
+        // MODO PENDENTE: Mostra as vagas baseadas nas demandas
         d.demandas.forEach(demanda => {
             const c = demanda.cota;
             const nomeFuncao = demanda.funcao;
@@ -642,7 +655,6 @@ export async function abrirEdicao(id) {
 
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
-
 // ALTERADO: Adicionados exemplos específicos por quadro/patente
 function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
     let exPosto = "POSTO/GRAD";
@@ -762,30 +774,53 @@ async function finalizarEnvioReal() {
     document.getElementById('recibo-modal').classList.remove('active');
 
     try {
-        // LÓGICA DE SPLIT (DIVISÃO DE PENDÊNCIAS)
         const docSnap = await getDoc(doc(db, "escalas", escalaSelecionadaId));
         const dadosOriginais = docSnap.data();
-        let demandasRestantes = JSON.parse(JSON.stringify(dadosOriginais.demandas || []));
-        let houveParcial = false;
 
-        // Abate as cotas enviadas
+        // === CORREÇÃO 1: MODO EDIÇÃO (Impede de clonar o documento) ===
+        if (dadosOriginais.status === "Preenchido") {
+            const codigoAuth = dadosOriginais.codigoAutenticacao || gerarCodigoAutenticacao();
+            await updateDoc(doc(db, "escalas", escalaSelecionadaId), {
+                militares: JSON.stringify(dadosParaEnvio),
+                assinadoPor: nomeGuerra,
+                assinadoNomeCompleto: nomeCompleto,
+                assinadoFuncao: funcaoAssinatura,
+                dataValidacao: new Date().toISOString()
+            });
+            
+            await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
+                codigo: codigoAuth, evento: dadosOriginais.evento, unidade: perfilAtual.unidade, dataValidacao: new Date().toISOString(), status: "Válido"
+            }, { merge: true });
+
+            await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeGuerra, nomeCompleto, funcaoAssinatura, dadosOriginais);
+            alert("Dados do militar atualizados com sucesso!");
+            window.location.reload();
+            return;
+        }
+
+        // === CORREÇÃO 2: ABATIMENTO INTELIGENTE (Impede de ficar travado como Pendente) ===
+        let demandasRestantes = JSON.parse(JSON.stringify(dadosOriginais.demandas || []));
+
         dadosParaEnvio.forEach(militar => {
             const funcTarget = demandasRestantes.find(d => d.funcao === militar.funcaoIndividual);
             if(funcTarget) {
                 const cat = getCategoriaPatente(militar.posto);
-                if(funcTarget.cota[cat] > 0) funcTarget.cota[cat]--;
-                else if(funcTarget.cota['praca'] > 0) funcTarget.cota['praca']--; // Fallback
+                if(funcTarget.cota[cat] > 0) {
+                    funcTarget.cota[cat]--;
+                } else {
+                    // Força o abatimento de qualquer vaga disponível se houver divergência de patente
+                    const catDisponivel = Object.keys(funcTarget.cota).find(k => funcTarget.cota[k] > 0);
+                    if(catDisponivel) funcTarget.cota[catDisponivel]--;
+                }
             }
         });
 
-        // Verifica se sobrou pendência
         let totalSobrou = 0;
         demandasRestantes.forEach(d => {
-            totalSobrou += Object.values(d.cota).reduce((a,b)=>parseInt(a)+parseInt(b),0);
+            totalSobrou += Object.values(d.cota).reduce((a,b)=>parseInt(a||0)+parseInt(b||0),0);
         });
 
         if (totalSobrou > 0) {
-            // CRIA NOVO DOC "PREENCHIDO" COM O QUE FOI ENVIADO
             const codigoAuth = gerarCodigoAutenticacao();
             const dataHoraEnvio = new Date().toISOString(); 
             
@@ -798,15 +833,13 @@ async function finalizarEnvioReal() {
                 assinadoPor: nomeGuerra,
                 assinadoNomeCompleto: nomeCompleto,
                 assinadoFuncao: funcaoAssinatura,
-                criadoEm: new Date() // Novo timestamp para aparecer no topo
+                criadoEm: new Date()
             });
 
-            // ATUALIZA O DOC ORIGINAL MANTENDO COMO PENDENTE (COM O QUE SOBROU)
             await updateDoc(doc(db, "escalas", escalaSelecionadaId), {
                 demandas: demandasRestantes
             });
 
-            // GERA PDF DO QUE FOI ENVIADO
             await setDoc(doc(db, "validacoes_publicas", codigoAuth), {
                 codigo: codigoAuth, evento: dadosOriginais.evento, unidade: perfilAtual.unidade, dataValidacao: dataHoraEnvio, status: "Válido"
             });
@@ -815,7 +848,6 @@ async function finalizarEnvioReal() {
             alert(`Envio Parcial Realizado!\n\nFoi gerado o recibo dos militares informados.\nA pendência foi atualizada solicitando apenas os ${totalSobrou} restantes.`);
 
         } else {
-            // ENVIO TOTAL (PADRÃO)
             const codigoAuth = gerarCodigoAutenticacao();
             const dataHoraEnvio = new Date().toISOString();
             await updateDoc(doc(db, "escalas", escalaSelecionadaId), { 
@@ -828,6 +860,11 @@ async function finalizarEnvioReal() {
             await gerarReciboPDFInstitucional(dadosParaEnvio, codigoAuth, nomeGuerra, nomeCompleto, funcaoAssinatura, dadosOriginais);
             alert("Escala enviada com sucesso!");
         }
+        
+        window.location.reload();
+
+    } catch (e) { alert("Erro no envio: " + e.message); window.location.reload(); }
+}
         
         window.location.reload();
 
@@ -973,6 +1010,7 @@ window.app = {
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 
 };
+
 
 
 
