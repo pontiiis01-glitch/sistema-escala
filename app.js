@@ -643,18 +643,31 @@ export async function abrirEdicao(id) {
     document.getElementById('form-militar-modal').classList.add('active'); 
 }
 
-// ALTERADO: Adicionados exemplos discretos
+// ALTERADO: Adicionados exemplos específicos por quadro/patente
 function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
-    let exPosto = "POSTO";
+    let exPosto = "POSTO/GRAD";
     let subTexto = "";
     
-    if(tipo.includes("PRAÇA")) { 
-        exPosto = "POSTO/GRAD"; 
-        subTexto = "Ex: 3º SGT, CB, SD"; 
-    }
-    if(tipo.includes("OFICIAL") || tipo.includes("SUPERIOR")) { 
+    // Define os textos com base no tipo exato da cota
+    if(tipo.includes("SUPERIOR")) { 
         exPosto = "POSTO"; 
-        subTexto = "Ex: MAJ, CAP, TEN"; 
+        subTexto = "Ex: CEL QOC, TEN CEL QOC, MAJ QOC/QOA/QOE"; 
+    }
+    else if(tipo.includes("INTERMEDIÁRIO")) { 
+        exPosto = "POSTO"; 
+        subTexto = "Ex: CAP QOC/QOA/QOE"; 
+    }
+    else if(tipo.includes("SUBALTERNO")) { 
+        exPosto = "POSTO"; 
+        subTexto = "Ex: 1 TEN QOC/QOA/QOE, 2 TEN QOC/QOA/QOE"; 
+    }
+    else if(tipo.includes("ESPECIAL")) { 
+        exPosto = "POSTO/GRAD"; 
+        subTexto = "Ex: ASP OF, CAD BM/3, CAD BM/2, CAD BM/1"; 
+    }
+    else if(tipo.includes("PRAÇA")) { 
+        exPosto = "GRADUAÇÃO"; 
+        subTexto = "Ex: ST, 1 SGT, 2 SGT, 3 SGT, CB, SD"; 
     }
 
     return `
@@ -677,7 +690,6 @@ function gerarHtmlMilitar(index, tipo, dados, funcaoFixa) {
         </div>
     </div>`;
 }
-
 // ================= ENVIO INTELIGENTE (DIVISÃO DE PENDÊNCIAS) =================
 export function abrirPreviaRecibo() {
     const rows = document.querySelectorAll('.militar-row');
@@ -961,6 +973,7 @@ window.app = {
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 
 };
+
 
 
 
