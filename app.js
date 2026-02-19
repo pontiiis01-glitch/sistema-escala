@@ -5,7 +5,7 @@ import { saveAs } from "https://cdn.skypack.dev/file-saver";
 // === LISTAS E DADOS ===
 const UNIDADES_CBMMA_FIXAS = [
     "1 BBM", "2 BBM", "1 CIEBM", "10 BBM", "13 BBM", "16 CIBM", "BBS", "BBA", "BMUS","BBEM","BBMAR", "CGCS", "DEP", "DAT", "DP", "DF", "DPM", "DAL", "CPP", "CPO", 
-    "1 Seção", "2 Seção", "3 Seção", "4 Seção","5 Seção","COCB-M", "CAPS", "CRF", "CEPDECMA", "DER", 
+    "1 SEÇÃO", "2 SEÇÃO", "3 SEÇÃO", "4 SEÇÃO","5 SEÇÃO","COCB-M", "CAPS", "CRF", "CEPDECMA", "DER", 
     "CMCB I", "CMCB II - SJR", "CMCB XII - PAÇO", "CMCB XIII - GUANABARA", "CMCB XXVI - PIO XII", 
     "ABMJM", "GAB CMT GERAL", "GAB CMT ADJUNTO"
 ];
@@ -953,3 +953,4 @@ window.app = {
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 
 };
+
