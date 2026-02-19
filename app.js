@@ -1000,7 +1000,87 @@ async function gerarReciboPDFInstitucional(listaMilitares, codigoAuth, nomeGuerr
 
     doc.save(`ESCALA_${dadosEscala.unidade}_${dadosEscala.evento}.pdf`);
 }
+// ================= EXPORTAÇÃO PARA EXCEL =================
+export async function baixarExcelDoEvento() {
+    if (!eventoPreviewAtual) return alert("Nenhum evento selecionado.");
+    
+    // Pega o botão e coloca ele em estado de "Carregando"
+    const btn = document.querySelector('button[onclick="baixarExcelDoEvento()"]');
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gerando Planilha...';
+    btn.disabled = true;
 
+    try {
+        // Busca os dados do evento atual no banco de dados
+        const q = query(collection(db, "escalas"), where("evento", "==", eventoPreviewAtual.nome), where("data", "==", eventoPreviewAtual.data));
+        const snapshot = await getDocs(q);
+        
+        // Cria a planilha virtual
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Escala');
+        
+        // Define as colunas do Excel
+        sheet.columns = [
+            { header: 'ORDEM', key: 'ordem', width: 10 },
+            { header: 'POSTO/GRAD', key: 'posto', width: 15 },
+            { header: 'NOME DE GUERRA', key: 'guerra', width: 25 },
+            { header: 'NOME COMPLETO', key: 'nome', width: 40 },
+            { header: 'CONTATO', key: 'contato', width: 20 },
+            { header: 'UNIDADE', key: 'unidade', width: 15 },
+            { header: 'FUNÇÃO', key: 'funcao', width: 25 }
+        ];
+        
+        // Estiliza o cabeçalho (Fundo vermelho padrão CBM e letras brancas)
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB30000' } }; 
+        sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        let contador = 1;
+        
+        // Percorre as escalas para encontrar quem já preencheu
+        snapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            if (d.status !== "Pendente" && d.militares) {
+                let militares = [];
+                try { militares = JSON.parse(d.militares); } catch(e) {}
+                
+                // Adiciona cada militar em uma linha da planilha
+                militares.forEach(m => {
+                    sheet.addRow({
+                        ordem: contador++,
+                        posto: m.posto,
+                        guerra: m.guerra,
+                        nome: m.nome,
+                        contato: m.contato,
+                        unidade: d.unidade,
+                        funcao: m.funcaoIndividual || d.funcao || "BOMBEIRO"
+                    });
+                });
+            }
+        });
+
+        // Se ninguém tiver respondido ainda
+        if (contador === 1) {
+            alert("Não há militares confirmados nesta missão para gerar o Excel.");
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+            return;
+        }
+
+        // Gera e baixa o arquivo final no computador/celular
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        saveAs(blob, `ESCALA_${eventoPreviewAtual.nome.replace(/\s+/g, '_')}.xlsx`);
+        
+    } catch (error) {
+        console.error("Erro ao gerar Excel:", error);
+        alert("Erro ao gerar o arquivo Excel. Verifique a conexão.");
+    }
+    
+    // Restaura o botão ao normal
+    btn.innerHTML = textoOriginal;
+    btn.disabled = false;
+}
 window.app = { 
     fazerLogin, fazerCadastro, sair, 
     adicionarOrdem, limparOrdens, excluirOrdem, dispararSolicitacao, 
@@ -1010,6 +1090,7 @@ window.app = {
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 
 };
+
 
 
 
