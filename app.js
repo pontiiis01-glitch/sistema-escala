@@ -88,12 +88,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function popularSelectCadastroEFuncoes() {
+    // 1. Popula o select da tela de Cadastro
     const selCadastro = document.getElementById('unidade-cadastro');
     if(selCadastro && selCadastro.options.length <= 1) {
         selCadastro.innerHTML = "<option value=''>Selecione a Unidade...</option>";
         UNIDADES_CBMMA_FIXAS.forEach(u => selCadastro.innerHTML += `<option value="${u}">${u}</option>`);
     }
 
+    // 2. NOVO: Popula o select de "Unidade Destino" no painel do Admin
+    const selDestinoAdmin = document.getElementById('select-unidade');
+    if(selDestinoAdmin && selDestinoAdmin.options.length <= 1) {
+        selDestinoAdmin.innerHTML = "<option value=''>Selecione a Unidade...</option>";
+        UNIDADES_CBMMA_FIXAS.forEach(u => selDestinoAdmin.innerHTML += `<option value="${u}">${u}</option>`);
+    }
+
+    // 3. Popula os selects de Funções
     const selectsFuncao = [document.getElementById('select-funcao'), document.getElementById('edit-admin-funcao')];
     selectsFuncao.forEach(sel => {
         if(sel) {
@@ -952,5 +961,6 @@ window.app = {
     abrirTelaAssinatura, solicitarConfirmacaoSenha, validarSenhaEGerarPDF      
 
 };
+
 
 
